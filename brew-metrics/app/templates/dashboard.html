@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - brew-metrics{% endblock %}
+{% block content %}
+<div class="score-header">
+    <div class="team-score team-riks">
+        <h2>Riks</h2>
+        <span class="score">{{ scores.Riks }}</span>
+    </div>
+    <div class="vs">vs</div>
+    <div class="team-score team-wades">
+        <h2>Wades</h2>
+        <span class="score">{{ scores.Wades }}</span>
+    </div>
+</div>
+
+<h2>Keg Race</h2>
+<div class="keg-bars">
+    {% for team in ["Riks", "Wades"] %}
+    <div class="keg-bar-group">
+        <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}</label>
+        <div class="progress-bar">
+            <div class="progress-fill team-{{ team|lower }}"
+                 style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Events</h2>
+<div class="event-list">
+    {% for event in events %}
+    <div class="event-card status-{{ event.status }}">
+        <div class="event-name">{{ event.name }}</div>
+        <div class="event-status">{{ event.status }}</div>
+        {% if event.riks_points is not none %}
+        <div class="event-scores">
+            <span class="team-riks">R: {{ event.riks_points }}</span>
+            <span class="team-wades">W: {{ event.wades_points }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Leaderboard</h2>
+<table class="leaderboard">
+    <thead>
+        <tr><th>#</th><th>Name</th><th>Team</th><th>Brews</th></tr>
+    </thead>
+    <tbody>
+        {% for entry in leaderboard %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ entry.person.nickname or entry.person.full_name }}</td>
+            <td>{{ entry.person.team_name }}</td>
+            <td>{{ entry.count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

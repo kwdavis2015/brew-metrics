@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Log a Brew - brew-metrics{% endblock %}
+{% block content %}
+<h1>Log a Brew</h1>
+
+{% if error == "keg_cap" %}
+<div class="alert alert-error">Keg is empty! Team has hit the 330 cap.</div>
+{% endif %}
+
+<form method="post" action="/log-brew" class="brew-form">
+    <label for="person_id">Who are you?</label>
+    <select id="person_id" name="person_id">
+        {% for p in people %}
+        <option value="{{ p.id }}"
+            {% if selected_person and selected_person.id == p.id %}selected{% endif %}>
+            {{ p.nickname or p.full_name }} ({{ p.team_name }})
+        </option>
+        {% endfor %}
+    </select>
+
+    {% if selected_person %}
+    <div class="brew-stats">
+        <p>Your brews: <strong>{{ personal_count }}</strong></p>
+        <p>Team {{ selected_person.team_name }}:
+            {{ keg_state[selected_person.team_name].logged_total }} /
+            {{ keg_state[selected_person.team_name].capacity }}</p>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="big-button">Log a Brew</button>
+</form>
+
+<p class="hint">
+    <a href="/dashboard">View the scoreboard</a>
+</p>
+
+<script>
+(function() {
+    var sel = document.getElementById('person_id');
+    var key = 'brew_person_id';
+
+    var saved = localStorage.getItem(key);
+    if (saved && !{{ 'true' if selected_person else 'false' }}) {
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === saved) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    {% if selected_person %}
+    localStorage.setItem(key, '{{ selected_person.id }}');
+    {% endif %}
+
+    sel.addEventListener('change', function() {
+        localStorage.setItem(key, sel.value);
+    });
+})();
+</script>
+{% endblock %}

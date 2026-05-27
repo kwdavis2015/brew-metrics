@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Admin - Survey Review{% endblock %}
+{% block content %}
+<h1>Survey Responses &amp; Team Builder</h1>
+
+<nav class="admin-nav">
+    <a href="/admin/survey">Survey</a>
+    <a href="/admin/brews">Brew Log</a>
+    <a href="/admin/events">Events</a>
+</nav>
+
+<h2>All Participants</h2>
+<table class="data-table">
+    <thead>
+        <tr><th>Name</th><th>Nickname</th><th>Status</th><th>Team</th></tr>
+    </thead>
+    <tbody>
+        {% for p in people %}
+        <tr>
+            <td>{{ p.full_name }}</td>
+            <td>{{ p.nickname or '-' }}</td>
+            <td>{{ p.status }}</td>
+            <td>
+                <form method="post" action="/admin/survey/assign" class="inline-form">
+                    <input type="hidden" name="person_id" value="{{ p.id }}">
+                    <select name="team_name" onchange="this.form.submit()">
+                        <option value="" {% if not p.team_name %}selected{% endif %}>Unassigned</option>
+                        <option value="Riks" {% if p.team_name == 'Riks' %}selected{% endif %}>Riks</option>
+                        <option value="Wades" {% if p.team_name == 'Wades' %}selected{% endif %}>Wades</option>
+                    </select>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Add Person Manually</h3>
+<form method="post" action="/admin/survey/add-person" class="add-person-form">
+    <div class="form-row">
+        <input type="text" name="full_name" placeholder="Full name" required>
+        <input type="text" name="nickname" placeholder="Nickname">
+        <select name="team_name">
+            <option value="">Unassigned</option>
+            <option value="Riks">Riks</option>
+            <option value="Wades">Wades</option>
+        </select>
+        <button type="submit">Add</button>
+    </div>
+</form>
+
+<h2>Survey Responses</h2>
+{% if responses %}
+<table class="data-table">
+    <thead>
+        <tr><th>Name</th><th>Arrival</th><th>Top Skills</th><th>Brew Level</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+        {% for r in responses %}
+        <tr>
+            <td>{{ r.full_name }}</td>
+            <td>{{ r.expected_arrival_day }} {{ r.expected_arrival_time }}</td>
+            <td>{{ r.top_3_skills | join(', ') }}</td>
+            <td>{{ r.brew_drinking_skill_rank }}</td>
+            <td>{{ r.notes or '-' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No survey responses yet.</p>
+{% endif %}
+
+<form method="post" action="/admin/survey/finalize">
+    <button type="submit" class="finalize-btn">Finalize Teams</button>
+</form>
+<p class="hint">Sets all assigned participants to active status.</p>
+{% endblock %}

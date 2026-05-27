@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pytest_cache/
+
+# Environment
+.env
+
+# Local note files
+*dev-flow-reference.md
+*to-do.md
+
+# Historical reference only — do not edit, superseded by high-level-design.md
+*riks-vs-wades-dashboard-spec.md
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/tfplan
+*.tfvars
+!terraform/terraform.tfvars.example
+
+# macOS
+.DS_Store

@@ -1,0 +1,7 @@
+aws_region     = "us-east-1"
+project_name   = "brew-metrics"
+db_username    = "brewadmin"
+db_password    = "changeme"
+admin_username = "admin"
+admin_password = "changeme"
+app_image_tag  = "latest"

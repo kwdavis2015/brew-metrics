@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Admin - Events{% endblock %}
+{% block content %}
+<h1>Event Scoring</h1>
+
+<nav class="admin-nav">
+    <a href="/admin/survey">Survey</a>
+    <a href="/admin/brews">Brew Log</a>
+    <a href="/admin/events">Events</a>
+</nav>
+
+<table class="data-table">
+    <thead>
+        <tr><th>Event</th><th>Status</th><th>Points</th><th>Riks</th><th>Wades</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr class="status-{{ event.status }}">
+            <form method="post" action="/admin/events/score">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <td>{{ event.name }}</td>
+                <td>{{ event.status }}</td>
+                <td>{{ event.points_available }}</td>
+                <td>
+                    <input type="number" name="riks_points" min="0"
+                           value="{{ event.riks_points if event.riks_points is not none else '' }}"
+                           placeholder="0" style="width: 4rem">
+                </td>
+                <td>
+                    <input type="number" name="wades_points" min="0"
+                           value="{{ event.wades_points if event.wades_points is not none else '' }}"
+                           placeholder="0" style="width: 4rem">
+                </td>
+                <td>
+                    <button type="submit" class="save-btn">Save</button>
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

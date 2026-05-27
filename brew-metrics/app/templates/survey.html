@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Survey - brew-metrics{% endblock %}
+{% block content %}
+<h1>Pre-Event Survey</h1>
+
+{% if submitted %}
+<div class="alert alert-success">Survey submitted. See you at the lake house.</div>
+{% endif %}
+
+<form method="post" action="/survey" class="survey-form">
+    <label for="full_name">Full Name *</label>
+    <input type="text" id="full_name" name="full_name" required>
+
+    <label for="nickname">Nickname (optional)</label>
+    <input type="text" id="nickname" name="nickname">
+
+    <label for="expected_arrival_day">Arrival Day *</label>
+    <select id="expected_arrival_day" name="expected_arrival_day" required>
+        <option value="">-- Select --</option>
+        <option value="Thursday">Thursday</option>
+        <option value="Friday">Friday</option>
+        <option value="Saturday">Saturday</option>
+    </select>
+
+    <label for="expected_arrival_time">Arrival Time (approximate)</label>
+    <input type="text" id="expected_arrival_time" name="expected_arrival_time" placeholder="e.g. 3:00 PM">
+
+    <fieldset>
+        <legend>Top 3 Skills (ranked)</legend>
+        {% for i in range(1, 4) %}
+        <label for="skill_{{ i }}">#{{ i }}</label>
+        <select id="skill_{{ i }}" name="skill_{{ i }}">
+            <option value="">-- Select --</option>
+            {% for skill in skills %}
+            <option value="{{ skill }}">{{ skill }}</option>
+            {% endfor %}
+        </select>
+        {% endfor %}
+    </fieldset>
+
+    <label for="brew_drinking_skill_rank">Brew Drinking Level</label>
+    <select id="brew_drinking_skill_rank" name="brew_drinking_skill_rank">
+        <option value="1">Light</option>
+        <option value="2" selected>Average</option>
+        <option value="3">Heavy</option>
+    </select>
+
+    <label for="notes">Notes (optional)</label>
+    <textarea id="notes" name="notes" rows="3"></textarea>
+
+    <button type="submit">Submit Survey</button>
+</form>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Admin - Brew Log{% endblock %}
+{% block content %}
+<h1>Brew Log</h1>
+
+<nav class="admin-nav">
+    <a href="/admin/survey">Survey</a>
+    <a href="/admin/brews">Brew Log</a>
+    <a href="/admin/events">Events</a>
+</nav>
+
+<div class="keg-summary">
+    {% for team in ["Riks", "Wades"] %}
+    <div class="keg-stat">
+        <strong>{{ team }}:</strong> {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}
+    </div>
+    {% endfor %}
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr><th>ID</th><th>Person</th><th>Team</th><th>Source</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for entry in brew_log %}
+        <tr>
+            <td>{{ entry.id }}</td>
+            <td>{{ entry.person_name }}</td>
+            <td>{{ entry.team_name }}</td>
+            <td>{{ entry.source }}</td>
+            <td>{{ entry.status }}</td>
+            <td>
+                {% if entry.status == 'active' %}
+                <form method="post" action="/admin/brews/reverse" class="inline-form">
+                    <input type="hidden" name="entry_id" value="{{ entry.id }}">
+                    <button type="submit" class="undo-btn">Undo</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
