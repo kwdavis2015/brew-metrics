@@ -4,11 +4,29 @@
 <h1>Survey Responses &amp; Team Builder</h1>
 
 <nav class="admin-nav">
-    <a href="/admin/teams">Teams</a>
     <a href="/admin/survey">Survey</a>
     <a href="/admin/brews">Brew Log</a>
     <a href="/admin/events">Events</a>
 </nav>
+
+<h2>Team Roster</h2>
+<div class="roster">
+    {% for team, members in roster.items() %}
+    <div class="roster-team">
+        <h3>{{ team }} ({{ members|length }})</h3>
+        {% if members %}
+        <ul>
+            {% for m in members %}
+            <li>{{ m.full_name }}{% if m.nickname %} ({{ m.nickname }}){% endif %}
+                <span class="roster-status">{{ m.status }}</span></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="hint">No members.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
 
 <h2>All Participants</h2>
 <table class="data-table">

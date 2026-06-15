@@ -2,7 +2,7 @@
 
 ## 1. Project Summary
 
-brew-metrics is a short-lived event web app for a bachelor party weekend (June 25–27, 2026) at a lake house with approximately 20 attendees. It tracks brews consumption per person and team, runs a live team scoreboard across ~20 weekend events, and supports team creation via a pre-weekend survey. The two competing teams are **Riks** and **Wades**.
+brew-metrics is a short-lived event web app for a bachelor party weekend (June 25–27, 2026) at a lake house with approximately 20 attendees. It tracks brews consumption per person and team, runs a live team scoreboard across ~20 weekend events, and assigns participants to teams via a pre-weekend survey. The two competing teams are **Riks** and **Wades** — they are fixed (seeded in the schema); there is no team-creation flow. Admins manage team membership, not the teams themselves.
 
 This document covers architecture, technology decisions, infrastructure, and security. The original requirements were captured in `riks-vs-wades-dashboard-spec.md`, which is kept for historical reference only (gitignored).
 
@@ -171,6 +171,7 @@ Full schema defined in `brew-metrics/app/schema.sql` (applied automatically on a
 
 | Table | Purpose |
 |---|---|
+| `teams` | Fixed seed of `Riks` + `Wades`; FK target for people/brew_log/keg state. Not added to at runtime |
 | `people` | Participant identity, team assignment, userid |
 | `team_survey_responses` | Pre-weekend skill/arrival survey results |
 | `brew_log` | Append-only brew entries; reversals are rows not deletes |
@@ -188,11 +189,14 @@ Full schema defined in `brew-metrics/app/schema.sql` (applied automatically on a
 | Pre-event survey | `/survey` | None | Phone | Pre-event |
 | Participant brew input | `/` | None | Phone | Weekend |
 | Public phone dashboard | `/dashboard` | None | Phone | Weekend |
+| Public event scoring | `/events` | None | Phone | Weekend |
 | TV dashboard | `/tv` | None | TV browser (16:9) | Weekend |
 | Admin login | `/admin/login` | None (form) | Any | Both |
-| Admin — survey review + team builder | `/admin/survey` | JWT cookie | Laptop preferred | Pre-event |
+| Admin — survey review + team builder + roster | `/admin/survey` | JWT cookie | Laptop preferred | Pre-event |
 | Admin — brew log + corrections | `/admin/brews` | JWT cookie | Phone or laptop | Weekend |
 | Admin — event scoring | `/admin/events` | JWT cookie | Phone or laptop | Weekend |
+
+`/events` is the public, honor-system scoring page: anyone selects their name (stored in `localStorage`) and enters points; the submitter is recorded as `entered_by`. `/admin/events` shows the same scoring with an `entered_by` audit column so cheating can be spotted. There is no `/admin/teams` route — team membership and the team roster live on `/admin/survey`.
 
 TV dashboard auto-refreshes every 15–30 seconds via HTMX polling or SSE. No manual reload needed on the TV.
 
@@ -206,6 +210,7 @@ This is the primary pre-event admin tool. It needs:
 - **Team assignment controls** — dropdown per person to assign Riks / Wades / Unassigned (auto-submits on change)
 - **Finalize button** — locks team assignments and marks all assigned people as `active`; unassigned respondents remain `pre_registered`
 - **Add person manually** — for walk-ups or people who skipped the survey
+- **Team roster** — read-only view grouping all participants by team (Riks / Wades / Unassigned) with per-team counts, for an at-a-glance view of the whole team
 
 ---
 
@@ -302,6 +307,16 @@ docker compose down -v                     # tear down + wipe DB
 DB credentials for local dev: `brewadmin` / `localdev` / `brewmetrics` on `localhost:5432`.
 
 Schema is applied automatically on app startup via the FastAPI lifespan handler — no manual migration step needed. HTMX is vendored locally (`app/static/htmx.min.js`) so the app works without internet access.
+
+### Testing
+
+Tests (`pytest`) run against a real local Postgres — start it with `docker compose up -d db` (the app container is not required). Test isolation is tuned for speed:
+
+- **Schema and the app connection pool are session-scoped** — `schema.sql` is applied once and the pool is initialized once per run.
+- **Per-test reset** is a fast `TRUNCATE ... RESTART IDENTITY` + reseed of the two fixed teams over a single shared autocommit connection, rather than a per-test schema rebuild.
+- The `client` fixture is built **without** the `TestClient` context manager so the app lifespan does not re-fire (and rebuild the pool/schema) on every test.
+
+This keeps the full suite at ~1–2s. Any raw `psycopg2` connection opened inside a test must be closed in `try/finally` — a connection leaked on a failed assertion holds a lock that blocks the next test's `TRUNCATE` and hangs the suite.
 
 ---
 

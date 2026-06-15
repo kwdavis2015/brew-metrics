@@ -8,10 +8,23 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-prod")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 8
 COOKIE_NAME = "brew_admin_token"
+COOKIE_MAX_AGE = JWT_EXPIRY_HOURS * 3600
 
 
 class NotAuthenticatedError(Exception):
     pass
+
+
+def set_admin_cookie(response, token: str) -> None:
+    """Write the admin session cookie with the standard attributes."""
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        httponly=True,
+        max_age=COOKIE_MAX_AGE,
+        samesite="lax",
+        path="/",
+    )
 
 
 def get_admin_credentials() -> dict:

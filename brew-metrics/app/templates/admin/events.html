@@ -4,39 +4,56 @@
 <h1>Event Scoring</h1>
 
 <nav class="admin-nav">
-    <a href="/admin/teams">Teams</a>
     <a href="/admin/survey">Survey</a>
     <a href="/admin/brews">Brew Log</a>
     <a href="/admin/events">Events</a>
 </nav>
+
+{% if error == "invalid_score" %}
+<div class="alert alert-error">Scores must be whole numbers (0 or more). Your entry was not saved.</div>
+{% elif error == "invalid_status" %}
+<div class="alert alert-error">Unrecognized event status. No change was made.</div>
+{% endif %}
 
 <table class="data-table">
     <thead>
         <tr>
             <th>Event</th><th>Status</th><th>Points</th>
             {% for team in teams %}<th>{{ team }}</th>{% endfor %}
+            <th>Entered by</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
         {% for event in events %}
         <tr class="status-{{ event.status }}">
-            <form method="post" action="/admin/events/score">
-                <input type="hidden" name="event_id" value="{{ event.id }}">
-                <td>{{ event.name }}</td>
-                <td>{{ event.status }}</td>
-                <td>{{ event.points_available }}</td>
-                {% for team in teams %}
-                <td>
-                    <input type="number" name="team_{{ loop.index }}_points" min="0"
-                           value="{{ event.scores.get(team) if event.scores.get(team) is not none else '' }}"
-                           placeholder="0" style="width: 4rem">
-                </td>
-                {% endfor %}
-                <td>
+            <td>{{ event.name }}</td>
+            <td>
+                <form method="post" action="/admin/events/status">
+                    <input type="hidden" name="event_id" value="{{ event.id }}">
+                    <select name="status" onchange="this.form.submit()" aria-label="Status">
+                        {% for s in statuses %}
+                        <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </td>
+            <td>{{ event.points_available }}</td>
+            {% for team in teams %}
+            <td>
+                <input form="score-{{ event.id }}" type="number" name="team_{{ loop.index }}_points"
+                       min="0" step="1"
+                       value="{{ event.scores.get(team) if event.scores.get(team) is not none else 0 }}"
+                       placeholder="0" style="width: 4rem">
+            </td>
+            {% endfor %}
+            <td class="entered-by">{{ event.entered_by or '—' }}</td>
+            <td>
+                <form method="post" action="/admin/events/score" id="score-{{ event.id }}">
+                    <input type="hidden" name="event_id" value="{{ event.id }}">
                     <button type="submit" class="save-btn">Save</button>
-                </td>
-            </form>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </tbody>

@@ -6,15 +6,21 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.auth import NotAuthenticatedError
+from app.auth import (
+    COOKIE_NAME,
+    NotAuthenticatedError,
+    create_token,
+    set_admin_cookie,
+    verify_token,
+)
 from app.db import apply_schema, close_pool, init_pool
 from app.routers import (
     admin,
     admin_brews,
     admin_events,
     admin_survey,
-    admin_teams,
     dashboard,
+    events,
     health,
     participant,
     survey,
@@ -42,13 +48,28 @@ async def not_authenticated_handler(request: Request, exc: NotAuthenticatedError
     return RedirectResponse("/admin/login", status_code=303)
 
 
+@app.middleware("http")
+async def refresh_admin_session(request: Request, call_next):
+    """Sliding session: re-issue the admin cookie on each authenticated
+    /admin request so active use keeps extending the 8h window."""
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/admin") and not path.startswith("/admin/login"):
+        token = request.cookies.get(COOKIE_NAME)
+        if token:
+            payload = verify_token(token)
+            if payload and payload.get("sub"):
+                set_admin_cookie(response, create_token(payload["sub"]))
+    return response
+
+
 app.include_router(health.router)
 app.include_router(participant.router)
 app.include_router(survey.router)
 app.include_router(dashboard.router)
+app.include_router(events.router)
 app.include_router(tv.router)
 app.include_router(admin.router)
 app.include_router(admin_survey.router)
 app.include_router(admin_brews.router)
 app.include_router(admin_events.router)
-app.include_router(admin_teams.router)

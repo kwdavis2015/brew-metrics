@@ -41,12 +41,10 @@ def close_pool():
         _pool = None
 
 
-def has_db() -> bool:
-    return _pool is not None
-
-
-@contextmanager
-def get_db():
+def _conn():
+    """Borrow a pooled connection, commit on success, roll back on error,
+    and always return it to the pool. Used both as a FastAPI dependency
+    (``get_db_conn``) and as a context manager (``get_db``)."""
     if not _pool:
         raise RuntimeError("Database pool not initialized")
     conn = _pool.getconn()
@@ -60,18 +58,8 @@ def get_db():
         _pool.putconn(conn)
 
 
-def get_db_conn():
-    if not _pool:
-        raise RuntimeError("Database pool not initialized")
-    conn = _pool.getconn()
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        _pool.putconn(conn)
+get_db_conn = _conn  # FastAPI dependency: `conn=Depends(get_db_conn)`
+get_db = contextmanager(_conn)  # `with get_db() as conn:`
 
 
 def apply_schema():

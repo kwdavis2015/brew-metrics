@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Event Scores - brew-metrics{% endblock %}
+{% block content %}
+<h1>Event Scores</h1>
+
+{% if error == "invalid_score" %}
+<div class="alert alert-error">Scores must be whole numbers (0 or more). Your entry was not saved.</div>
+{% elif error == "no_person" %}
+<div class="alert alert-error">Select your name before saving a score. Your entry was not saved.</div>
+{% endif %}
+
+<div class="person-selector-bar">
+    <label for="person_id_global">Who are you?</label>
+    <select id="person_id_global">
+        <option value="">-- select your name --</option>
+        {% for p in people %}
+        <option value="{{ p.id }}">{{ p.nickname or p.full_name }} ({{ p.team_name }})</option>
+        {% endfor %}
+    </select>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Event</th>
+            <th>Points</th>
+            {% for team in teams %}<th>{{ team }}</th>{% endfor %}
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for event in events %}
+        <tr class="status-{{ event.status }}">
+            <form method="post" action="/events/score" class="inline-score-form">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <input type="hidden" name="person_id" class="person-id-field" value="">
+                <td>{{ event.name }}</td>
+                <td>{{ event.points_available }}</td>
+                {% for team in teams %}
+                <td>
+                    <input type="number" name="team_{{ loop.index }}_points" min="0" step="1"
+                           value="{{ event.scores.get(team) if event.scores.get(team) is not none else 0 }}"
+                           placeholder="0" style="width: 4rem">
+                </td>
+                {% endfor %}
+                <td>
+                    <button type="submit" class="save-btn">Save</button>
+                </td>
+            </form>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p class="hint"><a href="/dashboard">View the scoreboard</a></p>
+
+<script>
+(function () {
+    var key = 'brew_person_id';
+    var globalSel = document.getElementById('person_id_global');
+
+    function applySaved(id) {
+        document.querySelectorAll('.person-id-field').forEach(function (f) { f.value = id; });
+        for (var i = 0; i < globalSel.options.length; i++) {
+            if (globalSel.options[i].value === id) { globalSel.selectedIndex = i; break; }
+        }
+    }
+
+    var saved = localStorage.getItem(key);
+    if (saved) applySaved(saved);
+
+    globalSel.addEventListener('change', function () {
+        localStorage.setItem(key, globalSel.value);
+        applySaved(globalSel.value);
+    });
+
+    document.querySelectorAll('.inline-score-form').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            var field = form.querySelector('.person-id-field');
+            if (!field.value) {
+                e.preventDefault();
+                alert('Please select your name before saving a score.');
+            }
+        });
+    });
+})();
+</script>
+{% endblock %}

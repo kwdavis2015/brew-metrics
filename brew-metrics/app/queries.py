@@ -1,6 +1,6 @@
 from psycopg2.extras import RealDictCursor
 
-MAX_TEAMS = 2
+from app.constants import EVENT_STATUSES
 
 
 def get_teams(conn) -> list[dict]:
@@ -13,22 +13,20 @@ def get_team_names(conn) -> list[str]:
     return [t["name"] for t in get_teams(conn)]
 
 
-def create_team(conn, name: str) -> tuple[bool, str | None]:
-    existing = get_teams(conn)
-    if len(existing) >= MAX_TEAMS:
-        return False, "limit"
-    with conn.cursor() as cur:
+def get_team_roster(conn) -> dict:
+    """Return {team_name: [members]} for each team plus 'Unassigned'."""
+    teams = get_team_names(conn)
+    roster: dict[str, list[dict]] = {t: [] for t in teams}
+    roster["Unassigned"] = []
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
-            "INSERT INTO teams (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
-            (name,),
+            "SELECT id, full_name, nickname, team_name, status "
+            "FROM people ORDER BY full_name"
         )
-        if cur.rowcount == 0:
-            return False, "exists"
-        cur.execute(
-            "INSERT INTO team_keg_state (team_name) VALUES (%s) ON CONFLICT DO NOTHING",
-            (name,),
-        )
-    return True, None
+        for r in cur.fetchall():
+            key = r["team_name"] if r["team_name"] in roster else "Unassigned"
+            roster[key].append(dict(r))
+    return roster
 
 
 def get_person(conn, person_id: int) -> dict | None:
@@ -85,21 +83,23 @@ def get_keg_state(conn) -> dict:
         return {row["team_name"]: dict(row) for row in cur.fetchall()}
 
 
-def log_brew(conn, person_id: int) -> tuple[dict | None, str | None]:
+def log_brew(conn, person_id: int) -> tuple[dict | None, str | None, dict | None]:
+    """Log a keg brew. Returns (entry, error, person); person is included so
+    callers don't re-fetch it for rendering."""
     person = get_person(conn, person_id)
     if not person or not person["team_name"]:
-        return None, "no_team"
+        return None, "no_team", person
     keg = get_keg_state(conn)
     team_keg = keg.get(person["team_name"], {})
     if team_keg.get("logged_total", 0) >= team_keg.get("capacity", 330):
-        return None, "keg_cap"
+        return None, "keg_cap", person
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "INSERT INTO brew_log (person_id, team_name, source) "
             "VALUES (%s, %s, 'keg') RETURNING *",
             (person_id, person["team_name"]),
         )
-        return dict(cur.fetchone()), None
+        return dict(cur.fetchone()), None, person
 
 
 def admin_log_brew(conn, person_id: int, source: str = "keg",
@@ -153,8 +153,12 @@ def create_person(conn, full_name: str, nickname: str | None, team_name: str | N
         )
 
 
-def _get_brew_cup_scores(conn) -> dict:
-    teams = get_team_names(conn)
+def _split_team_points(teams: list[str], p1, p2) -> dict:
+    """Map the two stored point columns onto the two fixed team names."""
+    return {teams[0]: p1, teams[1]: p2}
+
+
+def _get_brew_cup_scores(conn, teams: list[str]) -> dict:
     with conn.cursor() as cur:
         cur.execute("SELECT points_available FROM event_master WHERE name = 'Brew Cup'")
         row = cur.fetchone()
@@ -172,12 +176,13 @@ def _get_brew_cup_scores(conn) -> dict:
         return {t: round((totals.get(t, 0) / leader) * points) for t in teams}
 
 
-def get_events(conn) -> list[dict]:
-    teams = get_team_names(conn)
+def get_events(conn, teams: list[str] | None = None,
+               brew_cup: dict | None = None) -> list[dict]:
+    teams = teams or get_team_names(conn)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
             SELECT em.id, em.name, em.status, em.points_available,
-                   er.team_1_points, er.team_2_points
+                   er.team_1_points, er.team_2_points, er.entered_by
             FROM event_master em
             LEFT JOIN event_results er ON em.id = er.event_id
             ORDER BY em.id
@@ -185,25 +190,21 @@ def get_events(conn) -> list[dict]:
         events = []
         for r in cur.fetchall():
             e = dict(r)
-            e["scores"] = {}
-            if len(teams) > 0:
-                e["scores"][teams[0]] = e.pop("team_1_points")
-            else:
-                e.pop("team_1_points", None)
-            if len(teams) > 1:
-                e["scores"][teams[1]] = e.pop("team_2_points")
-            else:
-                e.pop("team_2_points", None)
+            e["scores"] = _split_team_points(
+                teams, e.pop("team_1_points"), e.pop("team_2_points")
+            )
             events.append(e)
-    brew_cup = _get_brew_cup_scores(conn)
+    if brew_cup is None:
+        brew_cup = _get_brew_cup_scores(conn, teams)
     for e in events:
         if e["name"] == "Brew Cup":
             e["scores"] = brew_cup
     return events
 
 
-def get_team_scores(conn) -> dict:
-    teams = get_team_names(conn)
+def get_team_scores(conn, teams: list[str] | None = None,
+                    brew_cup: dict | None = None) -> dict:
+    teams = teams or get_team_names(conn)
     with conn.cursor() as cur:
         cur.execute("""
             SELECT COALESCE(SUM(er.team_1_points), 0),
@@ -213,15 +214,25 @@ def get_team_scores(conn) -> dict:
             WHERE em.name != 'Brew Cup'
         """)
         row = cur.fetchone()
-        scores = {}
-        if len(teams) > 0:
-            scores[teams[0]] = row[0]
-        if len(teams) > 1:
-            scores[teams[1]] = row[1]
-    brew_cup = _get_brew_cup_scores(conn)
-    for t in teams:
-        scores[t] = scores.get(t, 0) + brew_cup.get(t, 0)
-    return scores
+    scores = _split_team_points(teams, row[0], row[1])
+    if brew_cup is None:
+        brew_cup = _get_brew_cup_scores(conn, teams)
+    return {t: scores[t] + brew_cup[t] for t in teams}
+
+
+def get_dashboard_context(conn) -> dict:
+    """Shared render context for the /dashboard and /tv pages. Computes the
+    team list and Brew Cup scores once and threads them through, so the
+    proportional formula runs a single time per page load."""
+    teams = get_team_names(conn)
+    brew_cup = _get_brew_cup_scores(conn, teams)
+    return {
+        "teams": teams,
+        "scores": get_team_scores(conn, teams, brew_cup),
+        "events": get_events(conn, teams, brew_cup),
+        "keg_state": get_keg_state(conn),
+        "leaderboard": get_leaderboard(conn),
+    }
 
 
 def get_leaderboard(conn) -> list[dict]:
@@ -300,20 +311,34 @@ def finalize_teams(conn) -> int:
         return cur.rowcount
 
 
-def save_event_score(conn, event_id: int, team_1_points: int, team_2_points: int):
+def save_event_score(conn, event_id: int, team_1_points: int, team_2_points: int,
+                     entered_by: str | None = None):
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO event_results (event_id, team_1_points, team_2_points) "
-            "VALUES (%s, %s, %s) "
+            "INSERT INTO event_results (event_id, team_1_points, team_2_points, entered_by) "
+            "VALUES (%s, %s, %s, %s) "
             "ON CONFLICT (event_id) DO UPDATE SET "
             "team_1_points = EXCLUDED.team_1_points, team_2_points = EXCLUDED.team_2_points, "
-            "updated_at = NOW()",
-            (event_id, team_1_points, team_2_points),
+            "entered_by = EXCLUDED.entered_by, updated_at = NOW()",
+            (event_id, team_1_points, team_2_points, entered_by),
         )
         cur.execute(
             "UPDATE event_master SET status = 'completed', updated_at = NOW() WHERE id = %s",
             (event_id,),
         )
+
+
+def set_event_status(conn, event_id: int, status: str) -> bool:
+    """Admin override of an event's lifecycle status. Returns False (no write)
+    for an unrecognized status or unknown event."""
+    if status not in EVENT_STATUSES:
+        return False
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE event_master SET status = %s, updated_at = NOW() WHERE id = %s",
+            (status, event_id),
+        )
+        return cur.rowcount > 0
 
 
 def get_survey_responses(conn) -> list[dict]:

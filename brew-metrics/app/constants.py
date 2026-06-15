@@ -1,3 +1,5 @@
+EVENT_STATUSES = ["pending", "in_progress", "completed"]
+
 SKILLS = [
     "brew drinking",
     "flong/drinking games",

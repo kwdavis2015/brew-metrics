@@ -200,3 +200,23 @@ th { font-weight: 600; background: #f9fafb; }
     .tv-team h1 { font-size: 2rem; }
     .tv-score { font-size: 3rem; }
 }
+
+/* Admin team roster */
+.roster {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+.roster-team {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+}
+.roster-team h3 { margin: 0 0 0.5rem; }
+.roster-team ul { margin: 0; padding-left: 1.2rem; }
+.roster-status {
+    color: #888;
+    font-size: 0.8rem;
+    margin-left: 0.4rem;
+}

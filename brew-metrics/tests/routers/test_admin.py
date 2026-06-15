@@ -23,6 +23,24 @@ def test_login_good_creds_sets_cookie(client):
     assert "brew_admin_token" in response.headers.get("set-cookie", "")
 
 
+def test_login_page_redirects_when_authenticated(admin_client):
+    response = admin_client.get("/admin/login", follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/survey" in response.headers["location"]
+
+
+def test_session_refreshes_on_authenticated_request(admin_client):
+    response = admin_client.get("/admin/survey")
+    assert response.status_code == 200
+    assert "brew_admin_token" in response.headers.get("set-cookie", "")
+
+
+def test_no_session_refresh_without_valid_token(client):
+    response = client.get("/admin/survey", follow_redirects=False)
+    assert response.status_code == 303
+    assert "brew_admin_token" not in response.headers.get("set-cookie", "")
+
+
 def test_admin_survey_requires_auth(client):
     response = client.get("/admin/survey", follow_redirects=False)
     assert response.status_code == 303
@@ -36,11 +54,6 @@ def test_admin_brews_requires_auth(client):
 
 def test_admin_events_requires_auth(client):
     response = client.get("/admin/events", follow_redirects=False)
-    assert response.status_code == 303
-
-
-def test_admin_teams_requires_auth(client):
-    response = client.get("/admin/teams", follow_redirects=False)
     assert response.status_code == 303
 
 
@@ -59,40 +72,19 @@ def test_admin_events_renders_with_auth(admin_client):
     assert response.status_code == 200
 
 
-def test_admin_teams_renders_with_auth(admin_client):
-    response = admin_client.get("/admin/teams")
+def test_team_creation_route_removed(admin_client):
+    response = admin_client.post("/admin/teams/create", data={"name": "Eagles"})
+    assert response.status_code == 404
+
+
+def test_admin_survey_shows_team_roster(admin_client):
+    admin_client.post("/admin/survey/add-person", data={
+        "full_name": "Roster Guy", "nickname": "RG", "team_name": "Riks",
+    })
+    response = admin_client.get("/admin/survey")
     assert response.status_code == 200
-
-
-def test_create_team(admin_client):
-    import os, psycopg2
-    response = admin_client.post("/admin/teams/create", data={
-        "name": "Eagles",
-    }, follow_redirects=False)
-    assert response.status_code == 303
-
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
-    cur = conn.cursor()
-    cur.execute("SELECT name FROM teams WHERE name = 'Eagles'")
-    assert cur.fetchone() is not None
-    cur.execute("SELECT team_name FROM team_keg_state WHERE team_name = 'Eagles'")
-    assert cur.fetchone() is not None
-    cur.close()
-    conn.close()
-
-
-def test_create_team_enforces_limit(admin_client):
-    import os, psycopg2
-    admin_client.post("/admin/teams/create", data={"name": "Team A"})
-    admin_client.post("/admin/teams/create", data={"name": "Team B"})
-    admin_client.post("/admin/teams/create", data={"name": "Team C"})
-
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM teams")
-    assert cur.fetchone()[0] == 2
-    cur.close()
-    conn.close()
+    assert "Team Roster" in response.text
+    assert "Roster Guy" in response.text
 
 
 def test_assign_team(admin_client, seeded_db):
@@ -165,6 +157,112 @@ def test_save_event_score(admin_client, seeded_db):
     assert cur.fetchone()[0] == "completed"
     cur.close()
     conn.close()
+
+
+def test_save_event_score_rejects_bad_input(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/events/score", data={
+        "event_id": str(eid),
+        "team_1_points": "oops",
+        "team_2_points": "50",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "error=invalid_score" in response.headers["location"]
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM event_results WHERE event_id = %s", (eid,))
+    assert cur.fetchone()[0] == 0
+    cur.close()
+    conn.close()
+
+
+def test_update_event_status(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/events/status", data={
+        "event_id": str(eid),
+        "status": "in_progress",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
+    assert cur.fetchone()[0] == "in_progress"
+    cur.close()
+    conn.close()
+
+
+def test_update_event_status_overrides_completed(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    # Scoring auto-completes the event...
+    admin_client.post("/admin/events/score", data={
+        "event_id": str(eid), "team_1_points": "100", "team_2_points": "50",
+    }, follow_redirects=False)
+    # ...and the admin can override it back to in_progress.
+    admin_client.post("/admin/events/status", data={
+        "event_id": str(eid), "status": "in_progress",
+    }, follow_redirects=False)
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
+    assert cur.fetchone()[0] == "in_progress"
+    cur.close()
+    conn.close()
+
+
+def test_update_event_status_rejects_invalid(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/events/status", data={
+        "event_id": str(eid),
+        "status": "cancelled",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "error=invalid_status" in response.headers["location"]
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
+    assert cur.fetchone()[0] == "pending"
+    cur.close()
+    conn.close()
+
+
+def test_update_event_status_requires_admin(client, seeded_db):
+    response = client.post("/admin/events/status", data={
+        "event_id": "1", "status": "in_progress",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
 
 
 def test_add_person_manually(admin_client, seeded_db):

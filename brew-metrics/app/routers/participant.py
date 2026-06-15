@@ -22,8 +22,7 @@ def participant_page(request: Request, conn=Depends(get_db_conn)):
 @router.post("/log-brew", response_class=HTMLResponse)
 def log_brew_post(request: Request, conn=Depends(get_db_conn), person_id: int = Form(...)):
     templates = request.app.state.templates
-    _, error = queries.log_brew(conn, person_id)
-    person = queries.get_person(conn, person_id)
+    _, error, person = queries.log_brew(conn, person_id)
     return templates.TemplateResponse(request, "participant.html", {
         "people": queries.get_active_people(conn),
         "selected_person": person,
