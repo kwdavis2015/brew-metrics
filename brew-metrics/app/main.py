@@ -13,6 +13,7 @@ from app.routers import (
     admin_brews,
     admin_events,
     admin_survey,
+    admin_teams,
     dashboard,
     health,
     participant,
@@ -50,3 +51,4 @@ app.include_router(admin.router)
 app.include_router(admin_survey.router)
 app.include_router(admin_brews.router)
 app.include_router(admin_events.router)
+app.include_router(admin_teams.router)

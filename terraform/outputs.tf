@@ -3,9 +3,9 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.app.repository_url
 }
 
-output "app_runner_url" {
-  description = "Public App Runner HTTPS URL"
-  value       = "https://${aws_apprunner_service.app.service_url}"
+output "ecs_service_url" {
+  description = "ECS Express Mode public HTTPS URL"
+  value       = aws_ecs_express_gateway_service.app.service_url
 }
 
 output "rds_endpoint" {

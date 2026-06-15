@@ -89,8 +89,8 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
 .team-score h2 { margin: 0; font-size: 1.1rem; }
 .score { font-size: 2.5rem; font-weight: bold; }
 .vs { font-size: 1.2rem; color: #666; }
-.team-riks { color: #2563eb; }
-.team-wades { color: #dc2626; }
+.team-1 { color: #2563eb; }
+.team-2 { color: #dc2626; }
 
 /* Progress bars */
 .keg-bars { margin: 0.5rem 0; }
@@ -109,8 +109,8 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
     transition: width 0.3s;
     min-width: 2px;
 }
-.progress-fill.team-riks { background: #2563eb; }
-.progress-fill.team-wades { background: #dc2626; }
+.progress-fill.team-1 { background: #2563eb; }
+.progress-fill.team-2 { background: #dc2626; }
 
 /* Events */
 .event-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -166,7 +166,9 @@ th { font-weight: 600; background: #f9fafb; }
     align-items: center;
     flex-wrap: wrap;
 }
-.form-row input, .form-row select { width: auto; flex: 1; min-width: 120px; }
+.form-row input[type="text"], .form-row input[type="number"], .form-row select { width: auto; flex: 1; min-width: 120px; }
+.checkbox-label { display: inline-flex !important; align-items: center; gap: 0.25rem; font-size: 0.85rem; white-space: nowrap; }
+.checkbox-label input[type="checkbox"] { width: auto; margin: 0; }
 .form-row button { margin-top: 0; }
 .add-person-form { margin: 0.5rem 0 1rem; }
 

@@ -17,7 +17,7 @@ This document covers architecture, technology decisions, infrastructure, and sec
 | Database | PostgreSQL 16 (RDS) | Relational audit trail, joins across brew log and event results, SQL aggregations for Brew Cup formula |
 | DB layer | Raw SQL + psycopg2 | No ORM — queries are plain SQL in `app/queries.py`, schema in `app/schema.sql`, connection pool via psycopg2 |
 | Container base image | `public.ecr.aws/docker/library/python:3.12-slim` | AWS-hosted, no Docker Hub rate limits |
-| Container registry | AWS ECR (private) | Native App Runner integration |
+| Container registry | AWS ECR (private) | Native ECS integration |
 | Infrastructure-as-code | Terraform | Fits SRE background, reproducible, state managed in S3 |
 
 **Frontend note:** HTMX is chosen over React because this app is mostly server-rendered data with incremental updates. The TV dashboard uses HTMX polling or Server-Sent Events for auto-refresh. If a richer SPA experience is needed, the backend API is clean enough to swap in React without changes to the backend.
@@ -28,48 +28,54 @@ This document covers architecture, technology decisions, infrastructure, and sec
 
 ### Hosting
 
-**AWS App Runner** is the primary compute platform. App Runner manages the container runtime, load balancing, TLS, and auto-scaling. No EC2, no EKS cluster management required.
+**Amazon ECS Express Mode** is the compute platform. ECS Express Mode provisions a complete application stack (ECS Fargate service, Application Load Balancer, autoscaling, networking) from a single API call. No EC2, no EKS cluster management required.
 
 - Source: ECR private image
-- Auto-deploy on new ECR image push (built-in CD)
-- TLS/HTTPS provided automatically by App Runner
-- Custom domain optional via Route 53 (see §6)
+- Deploy by calling `aws ecs update-express-gateway-service` (or `terraform apply`) after pushing a new image
+- TLS/HTTPS provided automatically; service URL format: `https://<name>.ecs.<region>.on.aws`
+- Custom domain optional via Route 53 CNAME → ALB DNS name (see §6)
+
+> **Migration note:** AWS App Runner closed to new customers in 2026. ECS Express Mode is AWS's official replacement, preserving the same operational simplicity.
 
 ### Infrastructure Components
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│ AWS Account                                              │
-│                                                          │
-│  ECR (private)                                           │
-│      │                                                   │
-│  App Runner Service ──── VPC Connector ─────────┐        │
-│      │                                          │        │
-│      │ (public HTTPS endpoint)          ┌───────▼──────┐ │
-│      │                                  │  VPC          │ │
-│      │                                  │  ┌──────────┐ │ │
-│      │                                  │  │ RDS PG   │ │ │
-│      │                                  │  │ (private │ │ │
-│      │                                  │  │ subnet)  │ │ │
-│      │                                  │  └──────────┘ │ │
-│      │                                  │               │ │
-│      │                                  │ Secrets Mgr   │ │
-│      │                                  └───────────────┘ │
-└──────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ AWS Account                                                    │
+│                                                                │
+│  ECR (private)                                                 │
+│      │                                                         │
+│      │              VPC (10.0.0.0/16)                          │
+│      │         ┌──────────────────────────────────────┐        │
+│      │         │  Public subnets (10.0.10-11.0/24)    │        │
+│      │         │  ┌─────────────────────────────┐     │        │
+│      └────────►│  │  ALB (managed by ECS)        │     │        │
+│                │  │  ECS Fargate tasks           │     │        │
+│  (HTTPS URL)   │  └──────────────┬──────────────┘     │        │
+│                │                 │ port 5432           │        │
+│                │  Private subnets│(10.0.1-2.0/24)     │        │
+│                │  ┌──────────────▼──────────────┐     │        │
+│                │  │  RDS PostgreSQL 16           │     │        │
+│                │  └─────────────────────────────┘     │        │
+│                │                                       │        │
+│                │  Secrets Manager (VPC-reachable)      │        │
+│                └──────────────────────────────────────┘        │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### Terraform Resources
 
 | Resource | Purpose |
 |---|---|
-| `aws_vpc` + subnets | Isolate RDS in private subnet |
+| `aws_vpc` + subnets (public + private) | Public subnets for ECS/ALB; private subnets for RDS |
+| `aws_internet_gateway` + route table | Internet access for Fargate tasks and ALB |
 | `aws_ecr_repository` | Private container registry |
 | `aws_db_instance` | RDS Postgres 16, `db.t3.micro` |
 | `aws_secretsmanager_secret` | DB credentials, admin credentials |
-| `aws_apprunner_vpc_connector` | Bridge App Runner to VPC for RDS access |
-| `aws_apprunner_service` | Runs the container, pulls from ECR |
-| `aws_iam_role` | App Runner instance role (ECR pull + Secrets Manager read) |
-| `aws_security_group` (x2) | App Runner connector SG → RDS SG on port 5432 |
+| `aws_cloudwatch_log_group` | Container logs at `/ecs/brew-metrics` |
+| `aws_ecs_express_gateway_service` | Provisions Fargate service + ALB + autoscaling |
+| `aws_iam_role` (x3) | Task execution, infrastructure, task roles |
+| `aws_security_group` (x2) | ECS tasks SG → RDS SG on port 5432 |
 
 State backend: S3 bucket + DynamoDB lock table (provisioned separately or manually first).
 
@@ -151,11 +157,11 @@ Phone browser / TV browser
 
 ## 6. URL and Access Strategy
 
-- App Runner provides a default HTTPS URL (`https://<random>.us-east-1.awsapprunner.com`)
+- ECS Express Mode provides a default HTTPS URL (`https://<name>.ecs.<region>.on.aws`)
 - The URL is not publicly advertised or indexed — shared only via QR code or group chat link
 - **No IP allowlisting or auth wall on the URL itself** — obscurity via unguessable subdomain is sufficient for a 3-day event
-- Optional: map a custom subdomain (e.g., `brews.yourdomain.com`) via Route 53 CNAME → App Runner custom domain — adds a cleaner QR code URL
-- HTTPS is enforced by App Runner; HTTP redirects to HTTPS automatically
+- Optional: map a custom subdomain (e.g., `brews.yourdomain.com`) via Route 53 CNAME → ALB DNS name — adds a cleaner QR code URL
+- HTTPS is terminated at the ALB; HTTP redirects to HTTPS automatically
 
 ---
 
@@ -308,10 +314,12 @@ For the first deploy and testing phase, the flow is manual:
 2. docker tag brew-metrics <account>.dkr.ecr.<region>.amazonaws.com/brew-metrics:latest
 3. aws ecr get-login-password | docker login --username AWS --password-stdin <ecr-url>
 4. docker push <ecr-url>/brew-metrics:latest
-5. App Runner detects new image → deploys automatically
+5. terraform apply   # or: aws ecs update-express-gateway-service --service-arn <arn> --primary-container image=<new-image>
 ```
 
-Terraform manages all infrastructure. After `terraform apply`, the ECR repo URL and App Runner service URL are output variables.
+Terraform manages all infrastructure. After `terraform apply`, the ECR repo URL and ECS Express Mode service URL are output variables.
+
+A GitHub Actions pipeline can be added later using the `aws-actions/amazon-ecs-deploy-express-service` action to automate steps 1–5 on push to `main`.
 
 A GitHub Actions pipeline can be added later to automate steps 1–4 on push to `main`.
 

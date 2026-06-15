@@ -14,6 +14,7 @@ def admin_survey(request: Request, conn=Depends(get_db_conn), _=Depends(require_
     return templates.TemplateResponse(request, "admin/survey.html", {
         "people": queries.get_all_people(conn),
         "responses": queries.get_survey_responses(conn),
+        "teams": queries.get_team_names(conn),
     })
 
 

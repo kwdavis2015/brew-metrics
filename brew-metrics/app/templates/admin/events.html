@@ -4,6 +4,7 @@
 <h1>Event Scoring</h1>
 
 <nav class="admin-nav">
+    <a href="/admin/teams">Teams</a>
     <a href="/admin/survey">Survey</a>
     <a href="/admin/brews">Brew Log</a>
     <a href="/admin/events">Events</a>
@@ -11,7 +12,11 @@
 
 <table class="data-table">
     <thead>
-        <tr><th>Event</th><th>Status</th><th>Points</th><th>Riks</th><th>Wades</th><th></th></tr>
+        <tr>
+            <th>Event</th><th>Status</th><th>Points</th>
+            {% for team in teams %}<th>{{ team }}</th>{% endfor %}
+            <th></th>
+        </tr>
     </thead>
     <tbody>
         {% for event in events %}
@@ -21,16 +26,13 @@
                 <td>{{ event.name }}</td>
                 <td>{{ event.status }}</td>
                 <td>{{ event.points_available }}</td>
+                {% for team in teams %}
                 <td>
-                    <input type="number" name="riks_points" min="0"
-                           value="{{ event.riks_points if event.riks_points is not none else '' }}"
+                    <input type="number" name="team_{{ loop.index }}_points" min="0"
+                           value="{{ event.scores.get(team) if event.scores.get(team) is not none else '' }}"
                            placeholder="0" style="width: 4rem">
                 </td>
-                <td>
-                    <input type="number" name="wades_points" min="0"
-                           value="{{ event.wades_points if event.wades_points is not none else '' }}"
-                           placeholder="0" style="width: 4rem">
-                </td>
+                {% endfor %}
                 <td>
                     <button type="submit" class="save-btn">Save</button>
                 </td>

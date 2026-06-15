@@ -39,6 +39,11 @@ def test_admin_events_requires_auth(client):
     assert response.status_code == 303
 
 
+def test_admin_teams_requires_auth(client):
+    response = client.get("/admin/teams", follow_redirects=False)
+    assert response.status_code == 303
+
+
 def test_admin_survey_renders_with_auth(admin_client):
     response = admin_client.get("/admin/survey")
     assert response.status_code == 200
@@ -54,8 +59,45 @@ def test_admin_events_renders_with_auth(admin_client):
     assert response.status_code == 200
 
 
+def test_admin_teams_renders_with_auth(admin_client):
+    response = admin_client.get("/admin/teams")
+    assert response.status_code == 200
+
+
+def test_create_team(admin_client):
+    import os, psycopg2
+    response = admin_client.post("/admin/teams/create", data={
+        "name": "Eagles",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT name FROM teams WHERE name = 'Eagles'")
+    assert cur.fetchone() is not None
+    cur.execute("SELECT team_name FROM team_keg_state WHERE team_name = 'Eagles'")
+    assert cur.fetchone() is not None
+    cur.close()
+    conn.close()
+
+
+def test_create_team_enforces_limit(admin_client):
+    import os, psycopg2
+    admin_client.post("/admin/teams/create", data={"name": "Team A"})
+    admin_client.post("/admin/teams/create", data={"name": "Team B"})
+    admin_client.post("/admin/teams/create", data={"name": "Team C"})
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM teams")
+    assert cur.fetchone()[0] == 2
+    cur.close()
+    conn.close()
+
+
 def test_assign_team(admin_client, seeded_db):
     import os, psycopg2
+    t1, _ = seeded_db
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
     cur.execute("SELECT id FROM people WHERE full_name = 'Alex Reed'")
@@ -65,23 +107,24 @@ def test_assign_team(admin_client, seeded_db):
 
     response = admin_client.post("/admin/survey/assign", data={
         "person_id": str(pid),
-        "team_name": "Wades",
+        "team_name": t1,
     }, follow_redirects=False)
     assert response.status_code == 303
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
     cur.execute("SELECT team_name FROM people WHERE id = %s", (pid,))
-    assert cur.fetchone()[0] == "Wades"
+    assert cur.fetchone()[0] == t1
     cur.close()
     conn.close()
 
 
 def test_finalize_teams(admin_client, seeded_db):
     import os, psycopg2
+    t1, _ = seeded_db
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("UPDATE people SET team_name = 'Riks' WHERE full_name = 'Alex Reed'")
+    cur.execute("UPDATE people SET team_name = %s WHERE full_name = 'Alex Reed'", (t1,))
     conn.commit()
     cur.close()
     conn.close()
@@ -97,7 +140,7 @@ def test_finalize_teams(admin_client, seeded_db):
     conn.close()
 
 
-def test_save_event_score(admin_client):
+def test_save_event_score(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
@@ -108,14 +151,14 @@ def test_save_event_score(admin_client):
 
     response = admin_client.post("/admin/events/score", data={
         "event_id": str(eid),
-        "riks_points": "100",
-        "wades_points": "50",
+        "team_1_points": "100",
+        "team_2_points": "50",
     }, follow_redirects=False)
     assert response.status_code == 303
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT riks_points, wades_points FROM event_results WHERE event_id = %s", (eid,))
+    cur.execute("SELECT team_1_points, team_2_points FROM event_results WHERE event_id = %s", (eid,))
     row = cur.fetchone()
     assert row == (100, 50)
     cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
@@ -124,12 +167,13 @@ def test_save_event_score(admin_client):
     conn.close()
 
 
-def test_add_person_manually(admin_client):
+def test_add_person_manually(admin_client, seeded_db):
     import os, psycopg2
+    t1, _ = seeded_db
     response = admin_client.post("/admin/survey/add-person", data={
         "full_name": "Walk Up Guy",
         "nickname": "WUG",
-        "team_name": "Riks",
+        "team_name": t1,
     }, follow_redirects=False)
     assert response.status_code == 303
 
@@ -137,20 +181,100 @@ def test_add_person_manually(admin_client):
     cur = conn.cursor()
     cur.execute("SELECT status, team_name FROM people WHERE full_name = 'Walk Up Guy'")
     row = cur.fetchone()
-    assert row == ("active", "Riks")
+    assert row == ("active", t1)
+    cur.close()
+    conn.close()
+
+
+def test_admin_add_brew(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
+    pid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/brews/add", data={
+        "person_id": str(pid),
+        "source": "keg",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM brew_log WHERE person_id = %s AND status = 'active'", (pid,))
+    assert cur.fetchone()[0] == 1
+    cur.close()
+    conn.close()
+
+
+def test_admin_add_brew_byob(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
+    pid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/brews/add", data={
+        "person_id": str(pid),
+        "source": "byob",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT source FROM brew_log WHERE person_id = %s AND status = 'active'", (pid,))
+    assert cur.fetchone()[0] == "byob"
+    cur.close()
+    conn.close()
+
+
+def test_admin_add_brew_override_keg_cap(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
+    pid = cur.fetchone()[0]
+    for _ in range(330):
+        cur.execute(
+            "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, %s, 'keg')",
+            (pid, t1),
+        )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/brews/add", data={
+        "person_id": str(pid),
+        "source": "keg",
+        "admin_override": "true",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM brew_log WHERE person_id = %s AND status = 'active'", (pid,))
+    assert cur.fetchone()[0] == 331
     cur.close()
     conn.close()
 
 
 def test_reverse_brew(admin_client, seeded_db):
     import os, psycopg2
+    t1, _ = seeded_db
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
     cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
     pid = cur.fetchone()[0]
     cur.execute(
-        "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, 'Riks', 'keg') RETURNING id",
-        (pid,),
+        "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, %s, 'keg') RETURNING id",
+        (pid, t1),
     )
     entry_id = cur.fetchone()[0]
     conn.commit()

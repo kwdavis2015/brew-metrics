@@ -11,6 +11,7 @@ router = APIRouter()
 def dashboard(request: Request, conn=Depends(get_db_conn)):
     templates = request.app.state.templates
     return templates.TemplateResponse(request, "dashboard.html", {
+        "teams": queries.get_team_names(conn),
         "scores": queries.get_team_scores(conn),
         "events": queries.get_events(conn),
         "keg_state": queries.get_keg_state(conn),

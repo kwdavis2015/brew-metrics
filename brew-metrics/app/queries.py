@@ -1,5 +1,35 @@
 from psycopg2.extras import RealDictCursor
 
+MAX_TEAMS = 2
+
+
+def get_teams(conn) -> list[dict]:
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT id, name FROM teams ORDER BY id")
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_team_names(conn) -> list[str]:
+    return [t["name"] for t in get_teams(conn)]
+
+
+def create_team(conn, name: str) -> tuple[bool, str | None]:
+    existing = get_teams(conn)
+    if len(existing) >= MAX_TEAMS:
+        return False, "limit"
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO teams (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
+            (name,),
+        )
+        if cur.rowcount == 0:
+            return False, "exists"
+        cur.execute(
+            "INSERT INTO team_keg_state (team_name) VALUES (%s) ON CONFLICT DO NOTHING",
+            (name,),
+        )
+    return True, None
+
 
 def get_person(conn, person_id: int) -> dict | None:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -72,6 +102,25 @@ def log_brew(conn, person_id: int) -> tuple[dict | None, str | None]:
         return dict(cur.fetchone()), None
 
 
+def admin_log_brew(conn, person_id: int, source: str = "keg",
+                   admin_override: bool = False) -> tuple[dict | None, str | None]:
+    person = get_person(conn, person_id)
+    if not person or not person["team_name"]:
+        return None, "no_team"
+    if source == "keg" and not admin_override:
+        keg = get_keg_state(conn)
+        team_keg = keg.get(person["team_name"], {})
+        if team_keg.get("logged_total", 0) >= team_keg.get("capacity", 330):
+            return None, "keg_cap"
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "INSERT INTO brew_log (person_id, team_name, source) "
+            "VALUES (%s, %s, %s) RETURNING *",
+            (person_id, person["team_name"], source),
+        )
+        return dict(cur.fetchone()), None
+
+
 def reverse_brew(conn, entry_id: int) -> bool:
     with conn.cursor() as cur:
         cur.execute(
@@ -104,58 +153,74 @@ def create_person(conn, full_name: str, nickname: str | None, team_name: str | N
         )
 
 
-def _get_brew_cup_scores(conn) -> tuple[int, int, int]:
+def _get_brew_cup_scores(conn) -> dict:
+    teams = get_team_names(conn)
     with conn.cursor() as cur:
         cur.execute("SELECT points_available FROM event_master WHERE name = 'Brew Cup'")
         row = cur.fetchone()
         if not row:
-            return 0, 0, 0
+            return {t: 0 for t in teams}
         points = row[0]
         cur.execute(
             "SELECT team_name, COUNT(*) FROM brew_log "
             "WHERE status = 'active' GROUP BY team_name"
         )
         totals = {r[0]: r[1] for r in cur.fetchall()}
-        riks = totals.get("Riks", 0)
-        wades = totals.get("Wades", 0)
-        leader = max(riks, wades)
+        leader = max(totals.values()) if totals else 0
         if leader == 0:
-            return points, 0, 0
-        return points, round((riks / leader) * points), round((wades / leader) * points)
+            return {t: 0 for t in teams}
+        return {t: round((totals.get(t, 0) / leader) * points) for t in teams}
 
 
 def get_events(conn) -> list[dict]:
+    teams = get_team_names(conn)
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
             SELECT em.id, em.name, em.status, em.points_available,
-                   er.riks_points, er.wades_points
+                   er.team_1_points, er.team_2_points
             FROM event_master em
             LEFT JOIN event_results er ON em.id = er.event_id
             ORDER BY em.id
         """)
-        events = [dict(r) for r in cur.fetchall()]
-    _, brew_riks, brew_wades = _get_brew_cup_scores(conn)
+        events = []
+        for r in cur.fetchall():
+            e = dict(r)
+            e["scores"] = {}
+            if len(teams) > 0:
+                e["scores"][teams[0]] = e.pop("team_1_points")
+            else:
+                e.pop("team_1_points", None)
+            if len(teams) > 1:
+                e["scores"][teams[1]] = e.pop("team_2_points")
+            else:
+                e.pop("team_2_points", None)
+            events.append(e)
+    brew_cup = _get_brew_cup_scores(conn)
     for e in events:
         if e["name"] == "Brew Cup":
-            e["riks_points"] = brew_riks
-            e["wades_points"] = brew_wades
+            e["scores"] = brew_cup
     return events
 
 
 def get_team_scores(conn) -> dict:
+    teams = get_team_names(conn)
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT COALESCE(SUM(er.riks_points), 0),
-                   COALESCE(SUM(er.wades_points), 0)
+            SELECT COALESCE(SUM(er.team_1_points), 0),
+                   COALESCE(SUM(er.team_2_points), 0)
             FROM event_results er
             JOIN event_master em ON er.event_id = em.id
             WHERE em.name != 'Brew Cup'
         """)
         row = cur.fetchone()
-        scores = {"Riks": row[0], "Wades": row[1]}
-    _, brew_riks, brew_wades = _get_brew_cup_scores(conn)
-    scores["Riks"] += brew_riks
-    scores["Wades"] += brew_wades
+        scores = {}
+        if len(teams) > 0:
+            scores[teams[0]] = row[0]
+        if len(teams) > 1:
+            scores[teams[1]] = row[1]
+    brew_cup = _get_brew_cup_scores(conn)
+    for t in teams:
+        scores[t] = scores.get(t, 0) + brew_cup.get(t, 0)
     return scores
 
 
@@ -235,15 +300,15 @@ def finalize_teams(conn) -> int:
         return cur.rowcount
 
 
-def save_event_score(conn, event_id: int, riks_points: int, wades_points: int):
+def save_event_score(conn, event_id: int, team_1_points: int, team_2_points: int):
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO event_results (event_id, riks_points, wades_points) "
+            "INSERT INTO event_results (event_id, team_1_points, team_2_points) "
             "VALUES (%s, %s, %s) "
             "ON CONFLICT (event_id) DO UPDATE SET "
-            "riks_points = EXCLUDED.riks_points, wades_points = EXCLUDED.wades_points, "
+            "team_1_points = EXCLUDED.team_1_points, team_2_points = EXCLUDED.team_2_points, "
             "updated_at = NOW()",
-            (event_id, riks_points, wades_points),
+            (event_id, team_1_points, team_2_points),
         )
         cur.execute(
             "UPDATE event_master SET status = 'completed', updated_at = NOW() WHERE id = %s",

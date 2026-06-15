@@ -1,31 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - brew-metrics{% endblock %}
 {% block content %}
+{% if teams|length >= 2 %}
 <div class="score-header">
-    <div class="team-score team-riks">
-        <h2>Riks</h2>
-        <span class="score">{{ scores.Riks }}</span>
+    <div class="team-score team-1">
+        <h2>{{ teams[0] }}</h2>
+        <span class="score">{{ scores.get(teams[0], 0) }}</span>
     </div>
     <div class="vs">vs</div>
-    <div class="team-score team-wades">
-        <h2>Wades</h2>
-        <span class="score">{{ scores.Wades }}</span>
+    <div class="team-score team-2">
+        <h2>{{ teams[1] }}</h2>
+        <span class="score">{{ scores.get(teams[1], 0) }}</span>
     </div>
 </div>
+{% else %}
+<p>No teams created yet.</p>
+{% endif %}
 
+{% if keg_state %}
 <h2>Keg Race</h2>
 <div class="keg-bars">
-    {% for team in ["Riks", "Wades"] %}
+    {% for team in teams %}
+    {% if team in keg_state %}
     <div class="keg-bar-group">
         <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}</label>
         <div class="progress-bar">
-            <div class="progress-fill team-{{ team|lower }}"
+            <div class="progress-fill team-{{ loop.index }}"
                  style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
             </div>
         </div>
     </div>
+    {% endif %}
     {% endfor %}
 </div>
+{% endif %}
 
 <h2>Events</h2>
 <div class="event-list">
@@ -33,10 +41,11 @@
     <div class="event-card status-{{ event.status }}">
         <div class="event-name">{{ event.name }}</div>
         <div class="event-status">{{ event.status }}</div>
-        {% if event.riks_points is not none %}
+        {% if event.scores and event.scores.values()|select('ne', none)|list %}
         <div class="event-scores">
-            <span class="team-riks">R: {{ event.riks_points }}</span>
-            <span class="team-wades">W: {{ event.wades_points }}</span>
+            {% for team in teams %}
+            <span class="team-{{ loop.index }}">{{ team[:1] }}: {{ event.scores.get(team, '-') }}</span>
+            {% endfor %}
         </div>
         {% endif %}
     </div>

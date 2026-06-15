@@ -13,6 +13,7 @@ def admin_events(request: Request, conn=Depends(get_db_conn), _=Depends(require_
     templates = request.app.state.templates
     return templates.TemplateResponse(request, "admin/events.html", {
         "events": queries.get_events(conn),
+        "teams": queries.get_team_names(conn),
     })
 
 
@@ -21,8 +22,8 @@ def save_event_score(
     conn=Depends(get_db_conn),
     _=Depends(require_admin),
     event_id: int = Form(...),
-    riks_points: int = Form(...),
-    wades_points: int = Form(...),
+    team_1_points: int = Form(...),
+    team_2_points: int = Form(...),
 ):
-    queries.save_event_score(conn, event_id, riks_points, wades_points)
+    queries.save_event_score(conn, event_id, team_1_points, team_2_points)
     return RedirectResponse("/admin/events", status_code=303)

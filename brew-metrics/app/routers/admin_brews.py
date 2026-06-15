@@ -15,7 +15,20 @@ def admin_brews(request: Request, conn=Depends(get_db_conn), _=Depends(require_a
         "brew_log": queries.get_brew_log(conn),
         "people": queries.get_active_people(conn),
         "keg_state": queries.get_keg_state(conn),
+        "teams": queries.get_team_names(conn),
     })
+
+
+@router.post("/admin/brews/add")
+def add_brew(
+    conn=Depends(get_db_conn),
+    _=Depends(require_admin),
+    person_id: int = Form(...),
+    source: str = Form("keg"),
+    admin_override: bool = Form(False),
+):
+    queries.admin_log_brew(conn, person_id, source, admin_override)
+    return RedirectResponse("/admin/brews", status_code=303)
 
 
 @router.post("/admin/brews/reverse")

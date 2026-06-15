@@ -18,17 +18,13 @@ def _clean_db():
     conn.autocommit = True
     cur = conn.cursor()
 
+    cur.execute(
+        "DROP TABLE IF EXISTS admin_adjustments, event_results, event_master, "
+        "brew_log, team_keg_state, team_survey_responses, people, teams CASCADE"
+    )
+
     schema = (Path(__file__).parent.parent / "app" / "schema.sql").read_text()
     cur.execute(schema)
-
-    cur.execute(
-        "TRUNCATE people, team_survey_responses, brew_log, "
-        "event_results, admin_adjustments CASCADE"
-    )
-    cur.execute(
-        "DELETE FROM team_keg_state WHERE TRUE; "
-        "INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')"
-    )
 
     cur.close()
     conn.close()
@@ -48,6 +44,18 @@ def admin_client(client):
     return client
 
 
+def seed_teams(conn, team_1="Team Alpha", team_2="Team Beta"):
+    cur = conn.cursor()
+    cur.execute("INSERT INTO teams (name) VALUES (%s), (%s) ON CONFLICT DO NOTHING", (team_1, team_2))
+    cur.execute(
+        "INSERT INTO team_keg_state (team_name) VALUES (%s), (%s) ON CONFLICT DO NOTHING",
+        (team_1, team_2),
+    )
+    conn.commit()
+    cur.close()
+    return team_1, team_2
+
+
 def seed_person(conn, full_name, nickname=None, team_name=None, status="active"):
     cur = conn.cursor()
     cur.execute(
@@ -65,7 +73,9 @@ def seed_person(conn, full_name, nickname=None, team_name=None, status="active")
 def seeded_db():
     db_url = os.environ["DATABASE_URL"]
     conn = psycopg2.connect(db_url)
-    seed_person(conn, "Mike Davis", "MikeD", "Riks", "active")
-    seed_person(conn, "Steve Parker", None, "Wades", "active")
+    t1, t2 = seed_teams(conn)
+    seed_person(conn, "Mike Davis", "MikeD", t1, "active")
+    seed_person(conn, "Steve Parker", None, t2, "active")
     seed_person(conn, "Alex Reed", None, None, "pre_registered")
     conn.close()
+    return t1, t2

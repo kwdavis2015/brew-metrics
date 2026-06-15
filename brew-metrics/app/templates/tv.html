@@ -3,30 +3,34 @@
 {% block nav %}{% endblock %}
 {% block content %}
 <div class="tv-layout" hx-get="/tv" hx-trigger="every 30s" hx-select=".tv-layout" hx-swap="outerHTML">
+    {% if teams|length >= 2 %}
     <div class="tv-header">
-        <div class="tv-team team-riks">
-            <h1>Riks</h1>
-            <span class="tv-score">{{ scores.Riks }}</span>
+        <div class="tv-team team-1">
+            <h1>{{ teams[0] }}</h1>
+            <span class="tv-score">{{ scores.get(teams[0], 0) }}</span>
         </div>
         <div class="tv-vs">VS</div>
-        <div class="tv-team team-wades">
-            <h1>Wades</h1>
-            <span class="tv-score">{{ scores.Wades }}</span>
+        <div class="tv-team team-2">
+            <h1>{{ teams[1] }}</h1>
+            <span class="tv-score">{{ scores.get(teams[1], 0) }}</span>
         </div>
     </div>
+    {% endif %}
 
     <div class="tv-body">
         <div class="tv-keg">
             <h2>Keg Race</h2>
-            {% for team in ["Riks", "Wades"] %}
+            {% for team in teams %}
+            {% if team in keg_state %}
             <div class="keg-bar-group">
                 <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}</label>
                 <div class="progress-bar">
-                    <div class="progress-fill team-{{ team|lower }}"
+                    <div class="progress-fill team-{{ loop.index }}"
                          style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
                     </div>
                 </div>
             </div>
+            {% endif %}
             {% endfor %}
         </div>
 
@@ -34,15 +38,19 @@
             <h2>Events</h2>
             <table>
                 <thead>
-                    <tr><th>Event</th><th>Status</th><th>Riks</th><th>Wades</th></tr>
+                    <tr>
+                        <th>Event</th><th>Status</th>
+                        {% for team in teams %}<th>{{ team }}</th>{% endfor %}
+                    </tr>
                 </thead>
                 <tbody>
                     {% for event in events %}
                     <tr class="status-{{ event.status }}">
                         <td>{{ event.name }}</td>
                         <td>{{ event.status }}</td>
-                        <td>{{ event.riks_points if event.riks_points is not none else '-' }}</td>
-                        <td>{{ event.wades_points if event.wades_points is not none else '-' }}</td>
+                        {% for team in teams %}
+                        <td>{{ event.scores.get(team) if event.scores.get(team) is not none else '-' }}</td>
+                        {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>

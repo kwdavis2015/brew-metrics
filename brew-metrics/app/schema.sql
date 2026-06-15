@@ -1,8 +1,17 @@
+CREATE TABLE IF NOT EXISTS teams (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO teams (name) VALUES ('Riks'), ('Wades')
+ON CONFLICT (name) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS people (
     id SERIAL PRIMARY KEY,
     full_name TEXT NOT NULL UNIQUE,
     nickname TEXT,
-    team_name TEXT CHECK (team_name IN ('Riks', 'Wades')),
+    team_name TEXT REFERENCES teams(name),
     status TEXT NOT NULL DEFAULT 'pre_registered' CHECK (status IN ('pre_registered', 'active')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -27,7 +36,7 @@ CREATE TABLE IF NOT EXISTS team_survey_responses (
 CREATE TABLE IF NOT EXISTS brew_log (
     id SERIAL PRIMARY KEY,
     person_id INTEGER NOT NULL REFERENCES people(id),
-    team_name TEXT NOT NULL CHECK (team_name IN ('Riks', 'Wades')),
+    team_name TEXT NOT NULL REFERENCES teams(name),
     source TEXT NOT NULL DEFAULT 'keg' CHECK (source IN ('keg', 'byob')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'reversed')),
     reversal_of_entry_id INTEGER REFERENCES brew_log(id),
@@ -35,10 +44,13 @@ CREATE TABLE IF NOT EXISTS brew_log (
 );
 
 CREATE TABLE IF NOT EXISTS team_keg_state (
-    team_name TEXT PRIMARY KEY CHECK (team_name IN ('Riks', 'Wades')),
+    team_name TEXT PRIMARY KEY REFERENCES teams(name),
     capacity INTEGER NOT NULL DEFAULT 330,
     finished_at TIMESTAMPTZ
 );
+
+INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')
+ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS event_master (
     id SERIAL PRIMARY KEY,
@@ -52,8 +64,8 @@ CREATE TABLE IF NOT EXISTS event_master (
 CREATE TABLE IF NOT EXISTS event_results (
     id SERIAL PRIMARY KEY,
     event_id INTEGER NOT NULL UNIQUE REFERENCES event_master(id),
-    riks_points INTEGER NOT NULL DEFAULT 0,
-    wades_points INTEGER NOT NULL DEFAULT 0,
+    team_1_points INTEGER NOT NULL DEFAULT 0,
+    team_2_points INTEGER NOT NULL DEFAULT 0,
     entered_by TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -62,7 +74,7 @@ CREATE TABLE IF NOT EXISTS event_results (
 CREATE TABLE IF NOT EXISTS admin_adjustments (
     id SERIAL PRIMARY KEY,
     adjustment_type TEXT NOT NULL,
-    team_name TEXT CHECK (team_name IN ('Riks', 'Wades')),
+    team_name TEXT REFERENCES teams(name),
     person_id INTEGER REFERENCES people(id),
     amount INTEGER,
     related_entry_id INTEGER REFERENCES brew_log(id),
@@ -70,10 +82,6 @@ CREATE TABLE IF NOT EXISTS admin_adjustments (
     entered_by TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- Seed keg state
-INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')
-ON CONFLICT DO NOTHING;
 
 -- Seed event catalog
 INSERT INTO event_master (name, points_available) VALUES
