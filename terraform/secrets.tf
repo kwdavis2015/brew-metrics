@@ -31,7 +31,8 @@ resource "aws_secretsmanager_secret" "admin_credentials" {
 resource "aws_secretsmanager_secret_version" "admin_credentials" {
   secret_id = aws_secretsmanager_secret.admin_credentials.id
   secret_string = jsonencode({
-    username = var.admin_username
-    password = var.admin_password
+    username    = var.admin_username
+    password    = var.admin_password
+    dossier_key = var.dossier_key
   })
 }

@@ -132,19 +132,18 @@ def test_finalize_teams(admin_client, seeded_db):
     conn.close()
 
 
-def test_save_event_score(admin_client, seeded_db):
+def test_admin_save_event_winner(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    cur.execute("SELECT id FROM event_master WHERE name = 'Escanaba'")
     eid = cur.fetchone()[0]
     cur.close()
     conn.close()
 
-    response = admin_client.post("/admin/events/score", data={
+    response = admin_client.post("/admin/events/winner", data={
         "event_id": str(eid),
-        "team_1_points": "100",
-        "team_2_points": "50",
+        "winner_team": "Riks",
     }, follow_redirects=False)
     assert response.status_code == 303
 
@@ -152,29 +151,27 @@ def test_save_event_score(admin_client, seeded_db):
     cur = conn.cursor()
     cur.execute("SELECT team_1_points, team_2_points FROM event_results WHERE event_id = %s", (eid,))
     row = cur.fetchone()
-    assert row == (100, 50)
+    assert row == (100, 0)
     cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
     assert cur.fetchone()[0] == "completed"
     cur.close()
     conn.close()
 
 
-def test_save_event_score_rejects_bad_input(admin_client, seeded_db):
+def test_admin_save_event_winner_rejects_invalid_team(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    cur.execute("SELECT id FROM event_master WHERE name = 'Escanaba'")
     eid = cur.fetchone()[0]
     cur.close()
     conn.close()
 
-    response = admin_client.post("/admin/events/score", data={
+    response = admin_client.post("/admin/events/winner", data={
         "event_id": str(eid),
-        "team_1_points": "oops",
-        "team_2_points": "50",
+        "winner_team": "Eagles",
     }, follow_redirects=False)
-    assert response.status_code == 303
-    assert "error=invalid_score" in response.headers["location"]
+    assert "error=invalid_team" in response.headers["location"]
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
@@ -184,11 +181,84 @@ def test_save_event_score_rejects_bad_input(admin_client, seeded_db):
     conn.close()
 
 
+def test_admin_save_round_result(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/events/round", data={
+        "event_id": str(eid),
+        "round_number": "1",
+        "winner_team": "Wades",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT winner_team FROM event_round_results WHERE event_id = %s AND round_number = 1",
+        (eid,),
+    )
+    assert cur.fetchone()[0] == "Wades"
+    cur.close()
+    conn.close()
+
+
+def test_admin_reset_event(admin_client, seeded_db):
+    import os, psycopg2
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM event_master WHERE name = 'Escanaba'")
+    eid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    admin_client.post("/admin/events/winner", data={"event_id": str(eid), "winner_team": "Riks"})
+    admin_client.post("/admin/events/reset", data={"event_id": str(eid)}, follow_redirects=False)
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM event_results WHERE event_id = %s", (eid,))
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT status FROM event_master WHERE id = %s", (eid,))
+    assert cur.fetchone()[0] == "pending"
+    cur.close()
+    conn.close()
+
+
+def test_admin_winner_requires_auth(client, seeded_db):
+    response = client.post("/admin/events/winner", data={
+        "event_id": "1", "winner_team": "Riks",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
+
+
+def test_admin_round_requires_auth(client, seeded_db):
+    response = client.post("/admin/events/round", data={
+        "event_id": "1", "round_number": "1", "winner_team": "Riks",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
+
+
+def test_admin_reset_requires_auth(client, seeded_db):
+    response = client.post("/admin/events/reset", data={
+        "event_id": "1",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
+
+
 def test_update_event_status(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole'")
     eid = cur.fetchone()[0]
     cur.close()
     conn.close()
@@ -211,14 +281,14 @@ def test_update_event_status_overrides_completed(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole'")
     eid = cur.fetchone()[0]
     cur.close()
     conn.close()
 
     # Scoring auto-completes the event...
-    admin_client.post("/admin/events/score", data={
-        "event_id": str(eid), "team_1_points": "100", "team_2_points": "50",
+    admin_client.post("/admin/events/winner", data={
+        "event_id": str(eid), "winner_team": "Riks",
     }, follow_redirects=False)
     # ...and the admin can override it back to in_progress.
     admin_client.post("/admin/events/status", data={
@@ -237,7 +307,7 @@ def test_update_event_status_rejects_invalid(admin_client, seeded_db):
     import os, psycopg2
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole Tournament'")
+    cur.execute("SELECT id FROM event_master WHERE name = 'Cornhole'")
     eid = cur.fetchone()[0]
     cur.close()
     conn.close()
@@ -260,6 +330,54 @@ def test_update_event_status_rejects_invalid(admin_client, seeded_db):
 def test_update_event_status_requires_admin(client, seeded_db):
     response = client.post("/admin/events/status", data={
         "event_id": "1", "status": "in_progress",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
+
+
+def test_cheat_deduction_reduces_team_score(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    response = admin_client.post("/admin/events/deduct", data={
+        "team_name": t1,
+        "points": "25",
+        "reason": "cheated at cornhole",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT amount FROM admin_adjustments WHERE team_name = %s AND adjustment_type = 'cheat_deduction'",
+        (t1,),
+    )
+    assert cur.fetchone()[0] == -25
+    cur.close()
+    conn.close()
+
+
+def test_cheat_deduction_requires_reason(admin_client, seeded_db):
+    t1, _ = seeded_db
+    response = admin_client.post("/admin/events/deduct", data={
+        "team_name": t1, "points": "10", "reason": "  ",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "error=missing_reason" in response.headers["location"]
+
+
+def test_cheat_deduction_rejects_zero_points(admin_client, seeded_db):
+    t1, _ = seeded_db
+    response = admin_client.post("/admin/events/deduct", data={
+        "team_name": t1, "points": "0", "reason": "cheating",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "error=invalid_deduction" in response.headers["location"]
+
+
+def test_cheat_deduction_requires_admin(client, seeded_db):
+    t1, _ = seeded_db
+    response = client.post("/admin/events/deduct", data={
+        "team_name": t1, "points": "10", "reason": "cheating",
     }, follow_redirects=False)
     assert response.status_code == 303
     assert "/admin/login" in response.headers["location"]

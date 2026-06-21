@@ -5,8 +5,10 @@
 
 <nav class="admin-nav">
     <a href="/admin/survey">Survey</a>
-    <a href="/admin/brews">Brew Log</a>
+    <a href="/admin/brews">Beer Log</a>
     <a href="/admin/events">Events</a>
+    <a href="/admin/weekend">Weekend</a>
+    <a href="#" onclick="var k=prompt('Dossier key:'); if(k) window.location='/admin/dossier?key='+encodeURIComponent(k); return false;">Dossier</a>
 </nav>
 
 <h2>Team Roster</h2>
@@ -74,7 +76,7 @@
 {% if responses %}
 <table class="data-table">
     <thead>
-        <tr><th>Name</th><th>Arrival</th><th>Top Skills</th><th>Brew Level</th><th>Notes</th></tr>
+        <tr><th>Name</th><th>Arrival</th><th>Top Skills</th><th>Beer Level</th><th>Notes</th></tr>
     </thead>
     <tbody>
         {% for r in responses %}
@@ -82,7 +84,7 @@
             <td>{{ r.full_name }}</td>
             <td>{{ r.expected_arrival_day }} {{ r.expected_arrival_time }}</td>
             <td>{{ r.top_3_skills | join(', ') }}</td>
-            <td>{{ r.brew_drinking_skill_rank }}</td>
+            <td>{{ r.brew_drinking_level or '-' }}</td>
             <td>{{ r.notes or '-' }}</td>
         </tr>
         {% endfor %}

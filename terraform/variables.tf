@@ -34,6 +34,12 @@ variable "admin_password" {
   sensitive   = true
 }
 
+variable "dossier_key" {
+  description = "Passphrase required to access /admin/dossier (Erik Wade dossier responses)"
+  type        = string
+  sensitive   = true
+}
+
 variable "app_image_tag" {
   description = "ECR image tag to deploy on the App Runner service"
   type        = string

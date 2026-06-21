@@ -22,10 +22,13 @@ resource "aws_db_instance" "postgres" {
   db_subnet_group_name   = aws_db_subnet_group.postgres.name
   vpc_security_group_ids = [aws_security_group.rds.id]
 
-  publicly_accessible    = false
-  skip_final_snapshot    = true
-  deletion_protection    = false
+  publicly_accessible        = false
+  skip_final_snapshot        = true
+  deletion_protection        = false
   auto_minor_version_upgrade = true
+
+  backup_retention_period = 7
+  backup_window           = "05:00-06:00"
 
   tags = {
     Project = var.project_name

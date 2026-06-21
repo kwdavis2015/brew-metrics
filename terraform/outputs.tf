@@ -5,7 +5,7 @@ output "ecr_repository_url" {
 
 output "ecs_service_url" {
   description = "ECS Express Mode public HTTPS URL"
-  value       = aws_ecs_express_gateway_service.app.service_url
+  value       = "https://${var.project_name}.ecs.${var.aws_region}.on.aws"
 }
 
 output "rds_endpoint" {

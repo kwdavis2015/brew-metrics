@@ -4,24 +4,61 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}brew-metrics{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=2">
     <script src="/static/htmx.min.js"></script>
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     {% block nav %}
     <nav class="main-nav">
         <a href="/" class="nav-brand">brew-metrics</a>
         <div class="nav-links">
-            <a href="/">Log a Brew</a>
+            <a href="/">Log a Beer</a>
             <a href="/dashboard">Dashboard</a>
+            <a href="/metrics">Metrics</a>
             <a href="/events">Events</a>
             <a href="/survey">Survey</a>
             <a href="/admin/survey">Admin</a>
         </div>
     </nav>
     {% endblock %}
+    <div class="event-banner">
+        <div class="banner-inner">
+            <span class="banner-deco">✦</span>
+            <span class="banner-text">Wade's 1000 Beer Weekend</span>
+            <span class="banner-deco">✦</span>
+        </div>
+    </div>
     <main class="container">
         {% block content %}{% endblock %}
     </main>
+
+    {% block me_banner %}
+    <div id="me-banner" class="me-banner"></div>
+    <script>
+    (function () {
+        var banner = document.getElementById('me-banner');
+        var pid = localStorage.getItem('brew_person_id');
+        if (!pid) return;
+
+        function refresh() {
+            fetch('/api/me?person_id=' + pid)
+                .then(function (r) { return r.text(); })
+                .then(function (html) {
+                    if (html.trim()) {
+                        banner.innerHTML = html;
+                        banner.style.display = 'flex';
+                    }
+                })
+                .catch(function () {});
+        }
+
+        refresh();
+        setInterval(refresh, 30000);
+    })();
+    </script>
+    {% endblock %}
 </body>
 </html>

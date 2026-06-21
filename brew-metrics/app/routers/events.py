@@ -16,25 +16,69 @@ def events_page(request: Request, conn=Depends(get_db_conn)):
         "teams": queries.get_team_names(conn),
         "people": queries.get_active_people(conn),
         "error": request.query_params.get("error"),
+        "weekend_started": queries.get_weekend_started(conn),
     })
 
 
-@router.post("/events/score")
-def submit_event_score(
+def _check_gate(conn, person_id: str, winner_team: str | None = None):
+    """Returns (pid, error_code) — error_code is set if validation fails."""
+    if not queries.get_weekend_started(conn):
+        return None, "not_started"
+    pid = parse_nonneg_int(person_id)
+    if pid is None:
+        return None, "no_person"
+    if winner_team is not None:
+        teams = queries.get_team_names(conn)
+        if winner_team not in teams:
+            return None, "invalid_team"
+    return pid, None
+
+
+@router.post("/events/winner")
+def submit_event_winner(
     conn=Depends(get_db_conn),
     event_id: int = Form(...),
-    team_1_points: str = Form(""),
-    team_2_points: str = Form(""),
+    winner_team: str = Form(...),
     person_id: str = Form(""),
 ):
+    pid, err = _check_gate(conn, person_id, winner_team)
+    if err:
+        return RedirectResponse(f"/events?error={err}", status_code=303)
+    person = queries.get_person(conn, pid)
+    entered_by = person["nickname"] or person["full_name"] if person else "unknown"
+    queries.save_event_winner(conn, event_id, winner_team, entered_by)
+    return RedirectResponse("/events", status_code=303)
+
+
+@router.post("/events/round")
+def submit_event_round(
+    conn=Depends(get_db_conn),
+    event_id: int = Form(...),
+    round_number: int = Form(...),
+    winner_team: str = Form(...),
+    person_id: str = Form(""),
+):
+    pid, err = _check_gate(conn, person_id, winner_team)
+    if err:
+        return RedirectResponse(f"/events?error={err}", status_code=303)
+    if round_number not in (1, 2, 3):
+        return RedirectResponse("/events?error=invalid_round", status_code=303)
+    person = queries.get_person(conn, pid)
+    entered_by = person["nickname"] or person["full_name"] if person else "unknown"
+    queries.save_round_result(conn, event_id, round_number, winner_team, entered_by)
+    return RedirectResponse("/events", status_code=303)
+
+
+@router.post("/events/reset")
+def reset_event(
+    conn=Depends(get_db_conn),
+    event_id: int = Form(...),
+    person_id: str = Form(""),
+):
+    if not queries.get_weekend_started(conn):
+        return RedirectResponse("/events?error=not_started", status_code=303)
     pid = parse_nonneg_int(person_id)
     if pid is None:
         return RedirectResponse("/events?error=no_person", status_code=303)
-    p1 = parse_nonneg_int(team_1_points)
-    p2 = parse_nonneg_int(team_2_points)
-    if p1 is None or p2 is None:
-        return RedirectResponse("/events?error=invalid_score", status_code=303)
-    person = queries.get_person(conn, pid)
-    entered_by = person["nickname"] or person["full_name"] if person else "unknown"
-    queries.save_event_score(conn, event_id, p1, p2, entered_by)
+    queries.reset_event(conn, event_id)
     return RedirectResponse("/events", status_code=303)

@@ -1,28 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Survey - brew-metrics{% endblock %}
+{% block title %}The 1,000 Beer Weekend Combine{% endblock %}
 {% block content %}
-<h1>Pre-Event Survey</h1>
+<h1>THE 1,000 BEER WEEKEND COMBINE</h1>
+<p class="survey-subtitle"><em>Legally binding. No backing out. Your liver has been notified.</em></p>
 
 {% if submitted %}
-<div class="alert alert-success">Survey submitted. See you at the lake house.</div>
+<div class="alert alert-success">Locked in. Your liver has been served.</div>
 {% endif %}
 
 <form method="post" action="/survey" class="survey-form">
-    <label for="full_name">Full Name *</label>
+
+    <label for="full_name">Government Name * <span class="field-hint">(goes on the LinkedIn shaming post)</span></label>
     <input type="text" id="full_name" name="full_name" required>
 
-    <label for="nickname">Nickname (optional)</label>
+    <label for="nickname">Battle Name <span class="field-hint">(what we scream at 2am)</span></label>
     <input type="text" id="nickname" name="nickname">
 
-    <label for="expected_arrival_day">Arrival Day *</label>
+    <label for="expected_arrival_day">When Do You Enter the Arena? *</label>
     <select id="expected_arrival_day" name="expected_arrival_day" required>
         <option value="">-- Select --</option>
-        <option value="Thursday">Thursday</option>
-        <option value="Friday">Friday</option>
-        <option value="Saturday">Saturday</option>
+        <option value="Thursday">Thursday — Day One Warrior</option>
+        <option value="Friday">Friday — Reinforcement</option>
+        <option value="Saturday">Saturday — Coward</option>
     </select>
 
-    <label for="expected_arrival_time">Arrival Time (approximate)</label>
+    <label for="expected_arrival_time">What Time Does the Legend Begin?</label>
     <input type="text" id="expected_arrival_time" name="expected_arrival_time" placeholder="e.g. 3:00 PM">
 
     <fieldset>
@@ -38,16 +40,58 @@
         {% endfor %}
     </fieldset>
 
-    <label for="brew_drinking_skill_rank">Brew Drinking Level</label>
-    <select id="brew_drinking_skill_rank" name="brew_drinking_skill_rank">
-        <option value="1">Light</option>
-        <option value="2" selected>Average</option>
-        <option value="3">Heavy</option>
+    <label for="brew_drinking_level">Beer Drinking Level * <span class="field-hint">(no default — be honest)</span></label>
+    <select id="brew_drinking_level" name="brew_drinking_level" required>
+        <option value="">-- Select --</option>
+        {% for level in beer_levels %}
+        <option value="{{ level }}">{{ level }}</option>
+        {% endfor %}
     </select>
 
-    <label for="notes">Notes (optional)</label>
+    <label for="beers_pledged">Beers You Pledge to the 1,000 <span class="field-hint">(this is a contract)</span></label>
+    <input type="number" id="beers_pledged" name="beers_pledged" min="0" placeholder="e.g. 42">
+
+    <fieldset>
+        <legend>Final Score Prediction</legend>
+        <div class="score-prediction">
+            <label for="score_prediction_riks">RIKS</label>
+            <input type="number" id="score_prediction_riks" name="score_prediction_riks" min="0" placeholder="0">
+            <span class="score-dash">–</span>
+            <input type="number" id="score_prediction_wades" name="score_prediction_wades" min="0" placeholder="0">
+            <label for="score_prediction_wades">WADES</label>
+        </div>
+    </fieldset>
+
+    <label for="first_to_puke">First to Puke</label>
+    <input type="text" id="first_to_puke" name="first_to_puke" placeholder="Name your victim">
+
+    <label for="first_to_tap_out">First to Tap Out</label>
+    <input type="text" id="first_to_tap_out" name="first_to_tap_out" placeholder="Name your victim">
+
+    <label for="notes">Final Words / Trash Talk / Confession <span class="field-hint">(will be read aloud)</span></label>
     <textarea id="notes" name="notes" rows="3"></textarea>
 
-    <button type="submit">Submit Survey</button>
+    <hr class="section-divider">
+
+    <h2 class="dossier-heading">🎯 THE ERIK WADE DOSSIER</h2>
+    <p class="field-hint">Fill this out like his future wife is NOT reading it.</p>
+
+    <label for="best_erik_story">Your Best Erik Story</label>
+    <p class="field-hint">The one you'd tell at the bachelor party, NOT the wedding. Names, dates, witnesses.</p>
+    <textarea id="best_erik_story" name="best_erik_story" rows="4"></textarea>
+
+    <fieldset>
+        <legend>Lightning Round</legend>
+        <label for="erik_in_one_word">Erik in one word</label>
+        <input type="text" id="erik_in_one_word" name="erik_in_one_word">
+
+        <label for="eriks_nickname">The nickname he's earned</label>
+        <input type="text" id="eriks_nickname" name="eriks_nickname">
+
+        <label for="over_under_marriage">Your over/under on the marriage</label>
+        <input type="text" id="over_under_marriage" name="over_under_marriage" placeholder="e.g. 7.5 years">
+    </fieldset>
+
+    <button type="submit" class="submit-btn">I'M IN — GOD HELP ME 🍻</button>
 </form>
 {% endblock %}

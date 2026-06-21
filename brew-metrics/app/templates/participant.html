@@ -1,7 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Log a Brew - brew-metrics{% endblock %}
+{% block title %}Log a Beer - brew-metrics{% endblock %}
 {% block content %}
-<h1>Log a Brew</h1>
+<h1>Log a Beer</h1>
+
+{% if weekend_started %}
 
 {% if error == "keg_cap" %}
 <div class="alert alert-error">Keg is empty! Team has hit the 330 cap.</div>
@@ -20,14 +22,17 @@
 
     {% if selected_person %}
     <div class="brew-stats">
-        <p>Your brews: <strong>{{ personal_count }}</strong></p>
+        <p>Your beers: <strong>{{ personal_count }}</strong></p>
         <p>Team {{ selected_person.team_name }}:
             {{ keg_state[selected_person.team_name].logged_total }} /
             {{ keg_state[selected_person.team_name].capacity }}</p>
     </div>
     {% endif %}
 
-    <button type="submit" class="big-button">Log a Brew</button>
+    <div class="brew-source-buttons">
+        <button type="submit" name="source" value="keg" class="big-button">Keg Beer</button>
+        <button type="submit" name="source" value="byob" class="big-button byob-button">BYOB</button>
+    </div>
 </form>
 
 <p class="hint">
@@ -58,4 +63,15 @@
     });
 })();
 </script>
+
+{% else %}
+
+<div class="kickoff-banner">
+    <p class="kickoff-title">1000 Beers Kickoff!</p>
+    <p class="kickoff-subtitle">The weekend hasn't started yet. Stand by...</p>
+</div>
+
+<p class="hint"><a href="/dashboard">View the scoreboard</a></p>
+
+{% endif %}
 {% endblock %}

@@ -5,57 +5,257 @@
 
 <nav class="admin-nav">
     <a href="/admin/survey">Survey</a>
-    <a href="/admin/brews">Brew Log</a>
+    <a href="/admin/brews">Beer Log</a>
     <a href="/admin/events">Events</a>
+    <a href="/admin/weekend">Weekend</a>
+    <a href="#" onclick="var k=prompt('Dossier key:'); if(k) window.location='/admin/dossier?key='+encodeURIComponent(k); return false;">Dossier</a>
 </nav>
 
-{% if error == "invalid_score" %}
-<div class="alert alert-error">Scores must be whole numbers (0 or more). Your entry was not saved.</div>
+{% if error == "invalid_team" %}
+<div class="alert alert-error">Unknown team — no change was made.</div>
 {% elif error == "invalid_status" %}
 <div class="alert alert-error">Unrecognized event status. No change was made.</div>
+{% elif error == "invalid_deduction" %}
+<div class="alert alert-error">Points to deduct must be a whole number greater than 0.</div>
+{% elif error == "missing_reason" %}
+<div class="alert alert-error">A reason is required for point deductions.</div>
 {% endif %}
 
+{# ── Main Events ─────────────────────────────────────────────────────────── #}
+<div class="event-section-header">Main Events — 400 pts total</div>
+{% for event in events if event.category == 'main' %}
+{% set ns = namespace(winner='') %}
+{% if event.status == 'completed' %}
+    {% for t in teams %}{% if event.scores.get(t, 0) > 0 %}{% set ns.winner = t %}{% endif %}{% endfor %}
+{% endif %}
+<div class="event-scoring-card status-{{ event.status }}">
+    <div class="event-card-header">
+        <span class="event-card-meta">{{ event.name }}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <span class="event-pts-badge">{{ event.points_available }} pts</span>
+            <form method="post" action="/admin/events/status">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <select name="status" onchange="this.form.submit()" aria-label="Status"
+                    style="width:auto;margin:0;font-size:0.8rem;padding:0.2rem 0.4rem">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+    {% if event.entered_by %}<p class="hint" style="margin:0 0 0.4rem">Entered by: {{ event.entered_by }}</p>{% endif %}
+    <form method="post" action="/admin/events/winner">
+        <input type="hidden" name="event_id" value="{{ event.id }}">
+        <div class="winner-buttons">
+            {% for t in teams %}
+            <button type="submit" name="winner_team" value="{{ t }}"
+                class="winner-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
+                {{ t }} wins
+            </button>
+            {% endfor %}
+        </div>
+    </form>
+    <div class="event-actions">
+        <form method="post" action="/admin/events/reset">
+            <input type="hidden" name="event_id" value="{{ event.id }}">
+            <button type="submit" class="reset-event-btn"
+                onclick="return confirm('Reset {{ event.name }}?')">Reset</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Flong ───────────────────────────────────────────────────────────────── #}
+<div class="event-section-header">Flong — 100 pts total</div>
+{% for event in events if event.category == 'flong' %}
+{% set ns = namespace(winner='') %}
+{% if event.status == 'completed' %}
+    {% for t in teams %}{% if event.scores.get(t, 0) > 0 %}{% set ns.winner = t %}{% endif %}{% endfor %}
+{% endif %}
+<div class="event-scoring-card status-{{ event.status }}">
+    <div class="event-card-header">
+        <span class="event-card-meta">{{ event.name }}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <span class="event-pts-badge">{{ event.points_available }} pts</span>
+            <form method="post" action="/admin/events/status">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <select name="status" onchange="this.form.submit()" aria-label="Status"
+                    style="width:auto;margin:0;font-size:0.8rem;padding:0.2rem 0.4rem">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+    {% if event.entered_by %}<p class="hint" style="margin:0 0 0.4rem">Entered by: {{ event.entered_by }}</p>{% endif %}
+    <form method="post" action="/admin/events/winner">
+        <input type="hidden" name="event_id" value="{{ event.id }}">
+        <div class="winner-buttons">
+            {% for t in teams %}
+            <button type="submit" name="winner_team" value="{{ t }}"
+                class="winner-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
+                {{ t }} wins
+            </button>
+            {% endfor %}
+        </div>
+    </form>
+    <div class="event-actions">
+        <form method="post" action="/admin/events/reset">
+            <input type="hidden" name="event_id" value="{{ event.id }}">
+            <button type="submit" class="reset-event-btn"
+                onclick="return confirm('Reset {{ event.name }}?')">Reset</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Friday Games ─────────────────────────────────────────────────────────── #}
+<div class="event-section-header">Friday Games — 100 pts total</div>
+{% for event in events if event.category == 'misc_friday' %}
+<div class="event-scoring-card status-{{ event.status }}">
+    <div class="event-card-header">
+        <span class="event-card-meta">{{ event.name }}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <span class="event-pts-badge">{{ event.points_available }} pts · best of 3</span>
+            <form method="post" action="/admin/events/status">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <select name="status" onchange="this.form.submit()" aria-label="Status"
+                    style="width:auto;margin:0;font-size:0.8rem;padding:0.2rem 0.4rem">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+    {% if event.entered_by %}<p class="hint" style="margin:0 0 0.4rem">Entered by: {{ event.entered_by }}</p>{% endif %}
+    <div class="round-rows">
+        {% for rnum in [1, 2, 3] %}
+        {% set rnd_winner = event.rounds.get(rnum) %}
+        <div class="round-row">
+            <span class="round-label">Round {{ rnum }}</span>
+            <form method="post" action="/admin/events/round" class="round-form">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <input type="hidden" name="round_number" value="{{ rnum }}">
+                <div class="round-buttons">
+                    {% for t in teams %}
+                    <button type="submit" name="winner_team" value="{{ t }}"
+                        class="round-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
+                        {{ t }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="event-actions">
+        <form method="post" action="/admin/events/reset">
+            <input type="hidden" name="event_id" value="{{ event.id }}">
+            <button type="submit" class="reset-event-btn"
+                onclick="return confirm('Reset {{ event.name }}?')">Reset</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Saturday Games ───────────────────────────────────────────────────────── #}
+<div class="event-section-header">Saturday Games — 100 pts total</div>
+{% for event in events if event.category == 'misc_saturday' %}
+<div class="event-scoring-card status-{{ event.status }}">
+    <div class="event-card-header">
+        <span class="event-card-meta">{{ event.name }}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <span class="event-pts-badge">{{ event.points_available }} pts · best of 3</span>
+            <form method="post" action="/admin/events/status">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <select name="status" onchange="this.form.submit()" aria-label="Status"
+                    style="width:auto;margin:0;font-size:0.8rem;padding:0.2rem 0.4rem">
+                    {% for s in statuses %}
+                    <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+    {% if event.entered_by %}<p class="hint" style="margin:0 0 0.4rem">Entered by: {{ event.entered_by }}</p>{% endif %}
+    <div class="round-rows">
+        {% for rnum in [1, 2, 3] %}
+        {% set rnd_winner = event.rounds.get(rnum) %}
+        <div class="round-row">
+            <span class="round-label">Round {{ rnum }}</span>
+            <form method="post" action="/admin/events/round" class="round-form">
+                <input type="hidden" name="event_id" value="{{ event.id }}">
+                <input type="hidden" name="round_number" value="{{ rnum }}">
+                <div class="round-buttons">
+                    {% for t in teams %}
+                    <button type="submit" name="winner_team" value="{{ t }}"
+                        class="round-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
+                        {{ t }}
+                    </button>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="event-actions">
+        <form method="post" action="/admin/events/reset">
+            <input type="hidden" name="event_id" value="{{ event.id }}">
+            <button type="submit" class="reset-event-btn"
+                onclick="return confirm('Reset {{ event.name }}?')">Reset</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{# ── Beers Drank ──────────────────────────────────────────────────────────── #}
+<div class="event-section-header">Beers Drank — 400 pts (computed)</div>
+{% for event in events if event.category == 'computed' %}
+<div class="beers-drank-display">
+    <span class="event-card-meta">{{ event.name }}</span>
+    <span class="beers-drank-scores">
+        {% for t in teams %}
+        {{ t }}: {{ event.scores.get(t, 0)|int }} pts{% if not loop.last %} &bull; {% endif %}
+        {% endfor %}
+    </span>
+</div>
+{% endfor %}
+
+<h2>Cheat Deductions</h2>
+<form method="post" action="/admin/events/deduct" class="add-person-form">
+    <div class="form-row">
+        <select name="team_name" required>
+            {% for t in teams %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+        <input type="number" name="points" min="1" step="1" placeholder="Points to deduct" required style="width: 8rem">
+        <input type="text" name="reason" placeholder="Reason" required style="width: 16rem">
+        <button type="submit" class="save-btn">Deduct</button>
+    </div>
+</form>
+
+{% if adjustments %}
 <table class="data-table">
     <thead>
-        <tr>
-            <th>Event</th><th>Status</th><th>Points</th>
-            {% for team in teams %}<th>{{ team }}</th>{% endfor %}
-            <th>Entered by</th>
-            <th></th>
-        </tr>
+        <tr><th>Team</th><th>Amount</th><th>Reason</th><th>By</th><th>When</th></tr>
     </thead>
     <tbody>
-        {% for event in events %}
-        <tr class="status-{{ event.status }}">
-            <td>{{ event.name }}</td>
-            <td>
-                <form method="post" action="/admin/events/status">
-                    <input type="hidden" name="event_id" value="{{ event.id }}">
-                    <select name="status" onchange="this.form.submit()" aria-label="Status">
-                        {% for s in statuses %}
-                        <option value="{{ s }}" {% if event.status == s %}selected{% endif %}>{{ s.replace('_', ' ') }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
-            </td>
-            <td>{{ event.points_available }}</td>
-            {% for team in teams %}
-            <td>
-                <input form="score-{{ event.id }}" type="number" name="team_{{ loop.index }}_points"
-                       min="0" step="1"
-                       value="{{ event.scores.get(team) if event.scores.get(team) is not none else 0 }}"
-                       placeholder="0" style="width: 4rem">
-            </td>
-            {% endfor %}
-            <td class="entered-by">{{ event.entered_by or '—' }}</td>
-            <td>
-                <form method="post" action="/admin/events/score" id="score-{{ event.id }}">
-                    <input type="hidden" name="event_id" value="{{ event.id }}">
-                    <button type="submit" class="save-btn">Save</button>
-                </form>
-            </td>
+        {% for a in adjustments %}
+        <tr>
+            <td>{{ a.team_name }}</td>
+            <td>{{ a.amount }}</td>
+            <td>{{ a.reason }}</td>
+            <td>{{ a.entered_by }}</td>
+            <td>{{ a.created_at.strftime('%m/%d %H:%M') }}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+{% else %}
+<p class="hint">No deductions recorded.</p>
+{% endif %}
 {% endblock %}

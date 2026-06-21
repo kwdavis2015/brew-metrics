@@ -1,3 +1,7 @@
+-- Baseline schema: all tables and seed data as established in the initial release.
+-- All statements are idempotent (IF NOT EXISTS / ON CONFLICT DO NOTHING) so this
+-- migration is safe to apply against a DB that was already bootstrapped manually.
+
 CREATE TABLE IF NOT EXISTS teams (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE,
@@ -28,24 +32,7 @@ CREATE TABLE IF NOT EXISTS team_survey_responses (
     skill_2 TEXT,
     skill_3 TEXT,
     brew_drinking_skill_rank INTEGER NOT NULL DEFAULT 2 CHECK (brew_drinking_skill_rank IN (1, 2, 3)),
-    brew_drinking_level TEXT,
     notes TEXT,
-    beers_pledged INTEGER,
-    score_prediction_riks INTEGER,
-    score_prediction_wades INTEGER,
-    first_to_puke TEXT,
-    first_to_tap_out TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS erik_dossier_responses (
-    id SERIAL PRIMARY KEY,
-    person_id INTEGER NOT NULL UNIQUE REFERENCES people(id),
-    best_erik_story TEXT,
-    erik_in_one_word TEXT,
-    eriks_nickname TEXT,
-    over_under_marriage TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -74,8 +61,6 @@ CREATE TABLE IF NOT EXISTS event_master (
     name TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed')),
     points_available INTEGER NOT NULL DEFAULT 0,
-    event_type TEXT NOT NULL DEFAULT 'single' CHECK (event_type IN ('single', 'best_of_3')),
-    category TEXT NOT NULL DEFAULT 'main' CHECK (category IN ('main', 'flong', 'misc_friday', 'misc_saturday', 'computed')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -90,16 +75,6 @@ CREATE TABLE IF NOT EXISTS event_results (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS event_round_results (
-    id SERIAL PRIMARY KEY,
-    event_id INTEGER NOT NULL REFERENCES event_master(id),
-    round_number INTEGER NOT NULL CHECK (round_number IN (1, 2, 3)),
-    winner_team TEXT NOT NULL REFERENCES teams(name),
-    entered_by TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (event_id, round_number)
-);
-
 CREATE TABLE IF NOT EXISTS admin_adjustments (
     id SERIAL PRIMARY KEY,
     adjustment_type TEXT NOT NULL,
@@ -112,33 +87,26 @@ CREATE TABLE IF NOT EXISTS admin_adjustments (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Seed event catalog — DO UPDATE so new event_type/category values apply on re-run
-INSERT INTO event_master (name, points_available, event_type, category) VALUES
--- Main events (400 pts total)
-    ('Escanaba',        100, 'single',    'main'),
-    ('Flong Round 1',    50, 'single',    'flong'),
-    ('Flong Round 2',    50, 'single',    'flong'),
-    ('Keg Race',        100, 'single',    'main'),
-    ('Relay',           100, 'single',    'main'),
--- Beers Drank: 0.4 pts/beer, computed dynamically; points_available is max reference only
-    ('Beers Drank',     400, 'single',    'computed'),
--- Friday misc events (100 pts total)
-    ('Billiards',        20, 'best_of_3', 'misc_friday'),
-    ('Cornhole',         20, 'best_of_3', 'misc_friday'),
-    ('Shuffleboard',     20, 'best_of_3', 'misc_friday'),
-    ('Foosball',         20, 'best_of_3', 'misc_friday'),
-    ('Darts',            10, 'best_of_3', 'misc_friday'),
-    ('Jenga',            10, 'best_of_3', 'misc_friday'),
--- Saturday misc events (100 pts total)
-    ('Golf Simulator',   20, 'best_of_3', 'misc_saturday'),
-    ('Pool Basketball',  20, 'best_of_3', 'misc_saturday'),
-    ('Beersbee',         20, 'best_of_3', 'misc_saturday'),
-    ('Connect 4',        20, 'best_of_3', 'misc_saturday'),
-    ('Golden Tee',       10, 'best_of_3', 'misc_saturday'),
-    ('Joust',            10, 'best_of_3', 'misc_saturday')
-ON CONFLICT (name) DO UPDATE SET
-    event_type = EXCLUDED.event_type,
-    category   = EXCLUDED.category;
+INSERT INTO event_master (name, points_available) VALUES
+    ('Escanaba',       100),
+    ('Flong Round 1',   50),
+    ('Flong Round 2',   50),
+    ('Keg Race',       100),
+    ('Relay',          100),
+    ('Beers Drank',    400),
+    ('Billiards',       20),
+    ('Cornhole',        20),
+    ('Shuffleboard',    20),
+    ('Foosball',        20),
+    ('Darts',           10),
+    ('Jenga',           10),
+    ('Golf Simulator',  20),
+    ('Pool Basketball', 20),
+    ('Beersbee',        20),
+    ('Connect 4',       20),
+    ('Golden Tee',      10),
+    ('Joust',           10)
+ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS app_settings (
     key   TEXT PRIMARY KEY,

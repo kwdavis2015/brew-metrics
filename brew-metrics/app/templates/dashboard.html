@@ -1,71 +1,141 @@
 {% extends "base.html" %}
 {% block title %}Dashboard - brew-metrics{% endblock %}
+{% block body_class %}page-dashboard{% endblock %}
 {% block content %}
+
+<div class="total-beers-banner">
+    <span class="total-beers-count">{{ total_beers }}</span>
+    <span class="total-beers-label">Total Beers Drank</span>
+</div>
+
 {% if teams|length >= 2 %}
-<div class="score-header">
-    <div class="team-score team-1">
-        <h2>{{ teams[0] }}</h2>
-        <span class="score">{{ scores.get(teams[0], 0) }}</span>
+<div class="team-stat-row">
+    {% for team in teams %}
+    <div class="team-stat-card team-{{ loop.index }}-card">
+        <div class="team-stat-name">{{ team }}</div>
+        <div class="team-stat-value">{{ team_beer_totals.get(team, 0) }}</div>
+        <div class="team-stat-sub">{{ keg_state[team].logged_total if team in keg_state else 0 }} keg &nbsp;·&nbsp; {{ byob_totals.get(team, 0) }} BYOB</div>
     </div>
-    <div class="vs">vs</div>
-    <div class="team-score team-2">
-        <h2>{{ teams[1] }}</h2>
-        <span class="score">{{ scores.get(teams[1], 0) }}</span>
+    {% endfor %}
+</div>
+
+<div class="dash-section dash-section--gold">
+    <h2>Points</h2>
+    <div class="points-bars">
+        {% for team in teams %}
+        {% set pts = scores.get(team, 0) %}
+        {% set pct = [pts / 1000 * 100, 0]|max %}
+        <div class="points-bar-group">
+            <div class="points-bar-label">{{ team }}</div>
+            <div class="points-bar-track">
+                <div class="points-bar-fill team-{{ loop.index }}-fill" style="width: {{ pct }}%"></div>
+                <div class="points-bar-text">{{ pts }} pts</div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 </div>
-{% else %}
-<p>No teams created yet.</p>
 {% endif %}
 
 {% if keg_state %}
-<h2>Keg Race</h2>
-<div class="keg-bars">
-    {% for team in teams %}
-    {% if team in keg_state %}
-    <div class="keg-bar-group">
-        <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}</label>
-        <div class="progress-bar">
-            <div class="progress-fill team-{{ loop.index }}"
-                 style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
+<div class="dash-section dash-section--green">
+    <h2>Beer Tracker</h2>
+    <div class="keg-bars">
+        {% for team in teams %}
+        {% if team in keg_state %}
+        <div class="keg-bar-group">
+            <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }} keg &nbsp;|&nbsp; {{ byob_totals.get(team, 0) }} BYOB</label>
+            <div class="progress-bar">
+                <div class="progress-fill team-{{ loop.index }}"
+                     style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
+                </div>
             </div>
         </div>
+        {% endif %}
+        {% endfor %}
     </div>
-    {% endif %}
-    {% endfor %}
 </div>
 {% endif %}
 
-<h2>Events</h2>
-<div class="event-list">
-    {% for event in events %}
-    <div class="event-card status-{{ event.status }}">
-        <div class="event-name">{{ event.name }}</div>
-        <div class="event-status">{{ event.status }}</div>
-        {% if event.scores and event.scores.values()|select('ne', none)|list %}
-        <div class="event-scores">
-            {% for team in teams %}
-            <span class="team-{{ loop.index }}">{{ team[:1] }}: {{ event.scores.get(team, '-') }}</span>
+<div id="scroll-section">
+<div class="dash-section dash-section--gold">
+    <h2>Leaderboard</h2>
+    <table class="leaderboard">
+        <thead>
+            <tr><th>#</th><th>Name</th><th>Team</th><th>Beers</th></tr>
+        </thead>
+        <tbody>
+            {% for entry in leaderboard %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ entry.person.nickname or entry.person.full_name }}</td>
+                <td>{{ entry.person.team_name }}</td>
+                <td>{{ entry.count }}</td>
+            </tr>
             {% endfor %}
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
+        </tbody>
+    </table>
 </div>
 
-<h2>Leaderboard</h2>
-<table class="leaderboard">
-    <thead>
-        <tr><th>#</th><th>Name</th><th>Team</th><th>Brews</th></tr>
-    </thead>
-    <tbody>
-        {% for entry in leaderboard %}
-        <tr>
-            <td>{{ loop.index }}</td>
-            <td>{{ entry.person.nickname or entry.person.full_name }}</td>
-            <td>{{ entry.person.team_name }}</td>
-            <td>{{ entry.count }}</td>
-        </tr>
+<div class="dash-section dash-section--green">
+    <h2>Events</h2>
+    <div class="event-list">
+        {% for event in events %}
+        <div class="event-card status-{{ event.status }}">
+            <div class="event-name">{{ event.name }}</div>
+            <div class="event-status">{{ event.status }}</div>
+            {% if event.scores and event.scores.values()|select('ne', none)|list %}
+            <div class="event-scores">
+                {% for team in teams %}
+                <span class="team-{{ loop.index }}">{{ team[:1] }}: {{ event.scores.get(team, '-') }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
         {% endfor %}
-    </tbody>
-</table>
+    </div>
+</div>
+</div>
+
+<script>
+(function () {
+    var section = document.getElementById('scroll-section');
+    var SCROLL_DURATION = 25000;
+    var PAUSE_MS = 3000;
+
+    function setHeight() {
+        var top = section.getBoundingClientRect().top + window.scrollY;
+        section.style.height = (window.innerHeight - top - 16) + 'px';
+        section.style.overflow = 'hidden';
+    }
+    setHeight();
+    window.addEventListener('resize', setHeight);
+
+    function easeInOut(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    function scrollDown() {
+        var maxScroll = section.scrollHeight - section.clientHeight;
+        if (maxScroll <= 0) { setTimeout(scrollDown, PAUSE_MS); return; }
+        var startTime = null;
+        function step(ts) {
+            if (!startTime) startTime = ts;
+            var progress = Math.min((ts - startTime) / SCROLL_DURATION, 1);
+            section.scrollTop = maxScroll * easeInOut(progress);
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                setTimeout(function () {
+                    section.scrollTop = 0;
+                    setTimeout(scrollDown, PAUSE_MS);
+                }, PAUSE_MS);
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
+    setTimeout(scrollDown, PAUSE_MS);
+})();
+</script>
 {% endblock %}

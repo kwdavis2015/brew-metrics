@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Metrics - brew-metrics{% endblock %}
+{% block content %}
+<h1>Beer Metrics</h1>
+
+<div class="metrics-controls">
+    <div class="control-group">
+        <span class="control-label">Time Scale</span>
+        <div class="btn-group">
+            <a href="?scale=weekend&group={{ group }}" class="metrics-btn{% if scale == 'weekend' %} active{% endif %}">Weekend</a>
+            <a href="?scale=day&group={{ group }}" class="metrics-btn{% if scale == 'day' %} active{% endif %}">By Hour</a>
+            <a href="?scale=hour&group={{ group }}" class="metrics-btn{% if scale == 'hour' %} active{% endif %}">15-Min</a>
+        </div>
+    </div>
+    <div class="control-group">
+        <span class="control-label">Group By</span>
+        <div class="btn-group">
+            <a href="?scale={{ scale }}&group=total" class="metrics-btn{% if group == 'total' %} active{% endif %}">Total</a>
+            <a href="?scale={{ scale }}&group=team" class="metrics-btn{% if group == 'team' %} active{% endif %}">Team</a>
+            <a href="?scale={{ scale }}&group=person" class="metrics-btn{% if group == 'person' %} active{% endif %}">Person</a>
+        </div>
+    </div>
+</div>
+
+{% if timeseries.labels %}
+
+<div class="metrics-stats">
+    <div class="metric-stat">
+        <span class="metric-stat-value" id="stat-total">—</span>
+        <span class="metric-stat-label">Total Brews</span>
+    </div>
+    <div class="metric-stat">
+        <span class="metric-stat-value" id="stat-avg">—</span>
+        <span class="metric-stat-label">Avg {{ avg_label }}</span>
+    </div>
+    <div class="metric-stat">
+        <span class="metric-stat-value" id="stat-peak">—</span>
+        <span class="metric-stat-label">Peak Bucket</span>
+    </div>
+</div>
+
+<div class="chart-wrap">
+    <canvas id="brewChart"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var data = {{ timeseries | tojson }};
+    var group = "{{ group }}";
+
+    var RIKS       = '#f5c000';
+    var RIKS_BG    = 'rgba(245,192,0,0.18)';
+    var WADES      = '#2a6b35';
+    var WADES_BG   = 'rgba(42,107,53,0.18)';
+    var PALETTE    = ['#f5c000','#2a6b35','#ef4444','#3b82f6','#a855f7'];
+    var PALETTE_BG = ['rgba(245,192,0,0.15)','rgba(42,107,53,0.15)','rgba(239,68,68,0.15)','rgba(59,130,246,0.15)','rgba(168,85,247,0.15)'];
+
+    var datasets = [];
+    if (group === 'total') {
+        datasets = [{
+            label: 'Total Beers',
+            data: data.total,
+            borderColor: RIKS,
+            backgroundColor: RIKS_BG,
+            fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6,
+        }];
+    } else if (group === 'team') {
+        datasets = [
+            { label: 'Riks',  data: data.by_team['Riks']  || [], borderColor: RIKS,  backgroundColor: RIKS_BG,  fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
+            { label: 'Wades', data: data.by_team['Wades'] || [], borderColor: WADES, backgroundColor: WADES_BG, fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
+        ];
+    } else {
+        datasets = (data.by_person || []).map(function (p, i) {
+            return {
+                label: p.label + ' (' + p.total + ')',
+                data: p.data,
+                borderColor: PALETTE[i % PALETTE.length],
+                backgroundColor: PALETTE_BG[i % PALETTE_BG.length],
+                fill: false, tension: 0.35, pointRadius: 4, pointHoverRadius: 6,
+            };
+        });
+    }
+
+    // Stats: always computed from total series regardless of group
+    var totals = data.total || [];
+    var grandTotal = totals.reduce(function (a, b) { return a + b; }, 0);
+    var avg = totals.length ? (grandTotal / totals.length).toFixed(1) : '0';
+    var peak = totals.length ? Math.max.apply(null, totals) : 0;
+    document.getElementById('stat-total').textContent = grandTotal;
+    document.getElementById('stat-avg').textContent = avg;
+    document.getElementById('stat-peak').textContent = peak;
+
+    var ctx = document.getElementById('brewChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: { labels: data.labels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: '#1a1a1a', font: { size: 13 } } },
+                tooltip: { mode: 'index', intersect: false },
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(0,0,0,0.07)' },
+                    ticks: { color: '#555' },
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, color: '#555' },
+                    grid: { color: 'rgba(0,0,0,0.07)' },
+                },
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        },
+    });
+})();
+</script>
+
+{% else %}
+<div class="metrics-empty">
+    <p>No brews logged yet. Check back once the weekend kicks off.</p>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -13,15 +13,20 @@ from app.auth import (
     set_admin_cookie,
     verify_token,
 )
-from app.db import apply_schema, close_pool, init_pool
+from app.db import close_pool, init_pool
+from app import migrate
+from app.secrets import load_secrets
 from app.routers import (
     admin,
     admin_brews,
+    admin_dossier,
     admin_events,
     admin_survey,
+    admin_weekend,
     dashboard,
     events,
     health,
+    metrics,
     participant,
     survey,
     tv,
@@ -32,8 +37,9 @@ BASE_DIR = Path(__file__).parent
 
 @asynccontextmanager
 async def lifespan(app):
+    load_secrets()
+    migrate.run()
     init_pool()
-    apply_schema()
     yield
     close_pool()
 
@@ -73,3 +79,6 @@ app.include_router(admin.router)
 app.include_router(admin_survey.router)
 app.include_router(admin_brews.router)
 app.include_router(admin_events.router)
+app.include_router(admin_weekend.router)
+app.include_router(admin_dossier.router)
+app.include_router(metrics.router)

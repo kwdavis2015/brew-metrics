@@ -74,7 +74,7 @@ resource "aws_subnet" "private" {
 # to reach the tasks. Egress is open for RDS, ECR pulls, and Secrets Manager calls.
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project_name}-ecs-tasks"
-  description = "ECS Fargate tasks — inbound from VPC ALB, outbound to RDS and AWS APIs"
+  description = "ECS Fargate tasks inbound from VPC ALB and outbound to RDS and AWS APIs"
   vpc_id      = aws_vpc.main.id
 
   ingress {

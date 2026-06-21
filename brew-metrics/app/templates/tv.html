@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}TV Dashboard - brew-metrics{% endblock %}
 {% block nav %}{% endblock %}
+{% block me_banner %}{% endblock %}
 {% block content %}
 <div class="tv-layout" hx-get="/tv" hx-trigger="every 30s" hx-select=".tv-layout" hx-swap="outerHTML">
     {% if teams|length >= 2 %}
@@ -19,7 +20,7 @@
 
     <div class="tv-body">
         <div class="tv-keg">
-            <h2>Keg Race</h2>
+            <h2>Beer Tracker</h2>
             {% for team in teams %}
             {% if team in keg_state %}
             <div class="keg-bar-group">
@@ -61,7 +62,7 @@
             <h2>Top Drinkers</h2>
             <table>
                 <thead>
-                    <tr><th>#</th><th>Name</th><th>Brews</th></tr>
+                    <tr><th>#</th><th>Name</th><th>Beers</th></tr>
                 </thead>
                 <tbody>
                     {% for entry in leaderboard[:5] %}

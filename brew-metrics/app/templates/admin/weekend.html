@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Admin - Weekend{% endblock %}
+{% block content %}
+<h1>Weekend Controls</h1>
+
+<nav class="admin-nav">
+    <a href="/admin/survey">Survey</a>
+    <a href="/admin/brews">Beer Log</a>
+    <a href="/admin/events">Events</a>
+    <a href="/admin/weekend">Weekend</a>
+    <a href="#" onclick="var k=prompt('Dossier key:'); if(k) window.location='/admin/dossier?key='+encodeURIComponent(k); return false;">Dossier</a>
+</nav>
+
+<section class="admin-section">
+    <h2>Weekend Kickoff</h2>
+    <p>Status: <strong>{{ "Kicked Off ✓" if weekend_started else "Not Started" }}</strong></p>
+    <form method="post" action="/admin/weekend/kickoff">
+        {% if weekend_started %}
+        <input type="hidden" name="started" value="false">
+        <button type="submit" class="save-btn">Reset to Not Started</button>
+        {% else %}
+        <input type="hidden" name="started" value="true">
+        <button type="submit" class="save-btn">Kick Off Weekend</button>
+        {% endif %}
+    </form>
+    <p class="hint">When kicked off, participants can log beers and submit event scores. Reset this during testing to lock submissions again.</p>
+</section>
+
+<section class="admin-section">
+    <h2>Data Reset</h2>
+    <p class="hint">Clears all test data: brew log, event scores, point adjustments. Resets event statuses to pending and keg state. <strong>Keeps people and survey responses.</strong></p>
+
+    <button type="button" class="danger-btn" id="reset-reveal-btn"
+            onclick="document.getElementById('reset-confirm').style.display='';this.style.display='none';">
+        Reset All Data
+    </button>
+
+    <div id="reset-confirm" style="display:none">
+        <p><strong>Are you sure?</strong> This cannot be undone.</p>
+        <form method="post" action="/admin/weekend/reset" style="display:inline">
+            <button type="submit" class="danger-btn">Yes, Reset Everything</button>
+        </form>
+        <button type="button" class="save-btn"
+                onclick="document.getElementById('reset-confirm').style.display='none';document.getElementById('reset-reveal-btn').style.display='';">
+            Cancel
+        </button>
+    </div>
+</section>
+{% endblock %}

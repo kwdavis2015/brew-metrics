@@ -7,3 +7,9 @@ def parse_nonneg_int(value: str | None) -> int | None:
     """
     value = (value or "").strip()
     return int(value) if value.isdigit() else None
+
+
+def parse_pos_int(value: str | None) -> int | None:
+    """Like parse_nonneg_int but requires value > 0."""
+    n = parse_nonneg_int(value)
+    return n if n is not None and n > 0 else None
