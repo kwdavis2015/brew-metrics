@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS teams (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO teams (name) VALUES ('Riks'), ('Wades')
+INSERT INTO teams (name) VALUES ('Red'), ('Blue')
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS people (
@@ -31,21 +31,10 @@ CREATE TABLE IF NOT EXISTS team_survey_responses (
     brew_drinking_level TEXT,
     notes TEXT,
     beers_pledged INTEGER,
-    score_prediction_riks INTEGER,
-    score_prediction_wades INTEGER,
+    score_prediction_red INTEGER,
+    score_prediction_blue INTEGER,
     first_to_puke TEXT,
     first_to_tap_out TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS erik_dossier_responses (
-    id SERIAL PRIMARY KEY,
-    person_id INTEGER NOT NULL UNIQUE REFERENCES people(id),
-    best_erik_story TEXT,
-    erik_in_one_word TEXT,
-    eriks_nickname TEXT,
-    over_under_marriage TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -62,11 +51,10 @@ CREATE TABLE IF NOT EXISTS brew_log (
 
 CREATE TABLE IF NOT EXISTS team_keg_state (
     team_name TEXT PRIMARY KEY REFERENCES teams(name),
-    capacity INTEGER NOT NULL DEFAULT 330,
     finished_at TIMESTAMPTZ
 );
 
-INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')
+INSERT INTO team_keg_state (team_name) VALUES ('Red'), ('Blue')
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS event_master (

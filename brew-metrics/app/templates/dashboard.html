@@ -14,7 +14,7 @@
     <div class="team-stat-card team-{{ loop.index }}-card">
         <div class="team-stat-name">{{ team }}</div>
         <div class="team-stat-value">{{ team_beer_totals.get(team, 0) }}</div>
-        <div class="team-stat-sub">{{ keg_state[team].logged_total if team in keg_state else 0 }} keg &nbsp;·&nbsp; {{ byob_totals.get(team, 0) }} BYOB</div>
+        <div class="team-stat-sub">{{ byob_totals.get(team, 0) }} BYOB</div>
     </div>
     {% endfor %}
 </div>
@@ -32,26 +32,6 @@
                 <div class="points-bar-text">{{ pts }} pts</div>
             </div>
         </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if keg_state %}
-<div class="dash-section dash-section--green">
-    <h2>Beer Tracker</h2>
-    <div class="keg-bars">
-        {% for team in teams %}
-        {% if team in keg_state %}
-        <div class="keg-bar-group">
-            <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }} keg &nbsp;|&nbsp; {{ byob_totals.get(team, 0) }} BYOB</label>
-            <div class="progress-bar">
-                <div class="progress-fill team-{{ loop.index }}"
-                     style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
-                </div>
-            </div>
-        </div>
-        {% endif %}
         {% endfor %}
     </div>
 </div>
@@ -95,6 +75,10 @@
         {% endfor %}
     </div>
 </div>
+</div>
+
+<div class="tv-link-footer">
+    <a href="/tv" class="tv-link">Open TV display →</a>
 </div>
 
 <script>

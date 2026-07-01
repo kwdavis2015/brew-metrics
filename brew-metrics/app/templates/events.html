@@ -41,7 +41,7 @@
         <div class="winner-buttons">
             {% for t in teams %}
             <button type="submit" name="winner_team" value="{{ t }}"
-                class="winner-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
+                class="winner-btn {{ 'btn-red' if loop.index == 1 else 'btn-blue' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
                 {{ t }} wins
             </button>
             {% endfor %}
@@ -78,7 +78,7 @@
         <div class="winner-buttons">
             {% for t in teams %}
             <button type="submit" name="winner_team" value="{{ t }}"
-                class="winner-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
+                class="winner-btn {{ 'btn-red' if loop.index == 1 else 'btn-blue' }} {{ 'winner-won' if ns.winner == t else ('winner-lost' if ns.winner else '') }}">
                 {{ t }} wins
             </button>
             {% endfor %}
@@ -117,7 +117,7 @@
                 <div class="round-buttons">
                     {% for t in teams %}
                     <button type="submit" name="winner_team" value="{{ t }}"
-                        class="round-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
+                        class="round-btn {{ 'btn-red' if loop.index == 1 else 'btn-blue' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
                         {{ t }}
                     </button>
                     {% endfor %}
@@ -159,7 +159,7 @@
                 <div class="round-buttons">
                     {% for t in teams %}
                     <button type="submit" name="winner_team" value="{{ t }}"
-                        class="round-btn {{ 'btn-riks' if loop.index == 1 else 'btn-wades' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
+                        class="round-btn {{ 'btn-red' if loop.index == 1 else 'btn-blue' }} {{ 'winner-won' if rnd_winner == t else ('winner-lost' if rnd_winner else '') }}">
                         {{ t }}
                     </button>
                     {% endfor %}
@@ -223,7 +223,7 @@
 {% else %}
 
 <div class="kickoff-banner">
-    <p class="kickoff-title">1000 Beers Kickoff!</p>
+    <p class="kickoff-title">Brew Combine Kickoff!</p>
     <p class="kickoff-subtitle">The weekend hasn't started yet. Stand by...</p>
 </div>
 <p class="hint"><a href="/dashboard">View the scoreboard</a></p>

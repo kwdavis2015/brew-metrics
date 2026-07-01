@@ -26,6 +26,4 @@ def load_secrets():
         secret = json.loads(client.get_secret_value(SecretId=secret_name_admin)["SecretString"])
         os.environ["ADMIN_USERNAME"] = secret["username"]
         os.environ["ADMIN_PASSWORD"] = secret["password"]
-        if "dossier_key" in secret:
-            os.environ["DOSSIER_KEY"] = secret["dossier_key"]
         logger.info("Admin credentials loaded from Secrets Manager")

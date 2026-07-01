@@ -1,11 +1,18 @@
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app import queries
+from app import exports, queries
 from app.constants import BEER_LEVELS, SKILLS
 from app.db import get_db_conn
 
 router = APIRouter()
+
+_SURVEY_COLUMNS = [
+    "full_name", "created_at", "expected_arrival_day", "expected_arrival_time",
+    "skill_1", "skill_2", "skill_3", "brew_drinking_level", "beers_pledged",
+    "score_prediction_red", "score_prediction_blue",
+    "first_to_puke", "first_to_tap_out", "notes",
+]
 
 
 @router.get("/survey", response_class=HTMLResponse)
@@ -32,14 +39,10 @@ def survey_submit(
     brew_drinking_level: str = Form(""),
     notes: str = Form(""),
     beers_pledged: str = Form(""),
-    score_prediction_riks: str = Form(""),
-    score_prediction_wades: str = Form(""),
+    score_prediction_red: str = Form(""),
+    score_prediction_blue: str = Form(""),
     first_to_puke: str = Form(""),
     first_to_tap_out: str = Form(""),
-    best_erik_story: str = Form(""),
-    erik_in_one_word: str = Form(""),
-    eriks_nickname: str = Form(""),
-    over_under_marriage: str = Form(""),
 ):
     def to_int(val: str):
         try:
@@ -50,8 +53,13 @@ def survey_submit(
     queries.create_survey_submission(
         conn, full_name, nickname, expected_arrival_day, expected_arrival_time,
         skill_1, skill_2, skill_3, brew_drinking_level, notes,
-        to_int(beers_pledged), to_int(score_prediction_riks), to_int(score_prediction_wades),
+        to_int(beers_pledged), to_int(score_prediction_red), to_int(score_prediction_blue),
         first_to_puke, first_to_tap_out,
-        best_erik_story, erik_in_one_word, eriks_nickname, over_under_marriage,
     )
     return RedirectResponse("/survey?submitted=1", status_code=303)
+
+
+@router.get("/survey/export")
+def survey_export(conn=Depends(get_db_conn)):
+    rows = queries.get_survey_export(conn)
+    return exports.csv_response(rows, _SURVEY_COLUMNS, "survey-data")

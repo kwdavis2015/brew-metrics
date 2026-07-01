@@ -69,7 +69,7 @@ def get_person_brews(conn, person_id: int) -> int:
 def get_keg_state(conn) -> dict:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
-            SELECT ks.team_name, ks.capacity,
+            SELECT ks.team_name,
                    COALESCE(bl.total, 0) AS logged_total,
                    ks.finished_at
             FROM team_keg_state ks
@@ -89,11 +89,6 @@ def log_brew(conn, person_id: int, source: str = "keg") -> tuple[dict | None, st
     person = get_person(conn, person_id)
     if not person or not person["team_name"]:
         return None, "no_team", person
-    if source == "keg":
-        keg = get_keg_state(conn)
-        team_keg = keg.get(person["team_name"], {})
-        if team_keg.get("logged_total", 0) >= team_keg.get("capacity", 330):
-            return None, "keg_cap", person
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "INSERT INTO brew_log (person_id, team_name, source) "
@@ -103,16 +98,10 @@ def log_brew(conn, person_id: int, source: str = "keg") -> tuple[dict | None, st
         return dict(cur.fetchone()), None, person
 
 
-def admin_log_brew(conn, person_id: int, source: str = "keg",
-                   admin_override: bool = False) -> tuple[dict | None, str | None]:
+def admin_log_brew(conn, person_id: int, source: str = "keg") -> tuple[dict | None, str | None]:
     person = get_person(conn, person_id)
     if not person or not person["team_name"]:
         return None, "no_team"
-    if source == "keg" and not admin_override:
-        keg = get_keg_state(conn)
-        team_keg = keg.get(person["team_name"], {})
-        if team_keg.get("logged_total", 0) >= team_keg.get("capacity", 330):
-            return None, "keg_cap"
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
             "INSERT INTO brew_log (person_id, team_name, source) "
@@ -336,9 +325,8 @@ def get_brew_log(conn) -> list[dict]:
 def create_survey_submission(
     conn, full_name, nickname, arrival_day, arrival_time,
     skill_1, skill_2, skill_3, brew_drinking_level, notes,
-    beers_pledged, score_prediction_riks, score_prediction_wades,
+    beers_pledged, score_prediction_red, score_prediction_blue,
     first_to_puke, first_to_tap_out,
-    best_erik_story, erik_in_one_word, eriks_nickname, over_under_marriage,
 ):
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute(
@@ -354,7 +342,7 @@ def create_survey_submission(
             "INSERT INTO team_survey_responses "
             "(person_id, expected_arrival_day, expected_arrival_time, "
             "skill_1, skill_2, skill_3, brew_drinking_level, notes, "
-            "beers_pledged, score_prediction_riks, score_prediction_wades, "
+            "beers_pledged, score_prediction_red, score_prediction_blue, "
             "first_to_puke, first_to_tap_out) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
             "ON CONFLICT (person_id) DO UPDATE SET "
@@ -365,30 +353,16 @@ def create_survey_submission(
             "brew_drinking_level = EXCLUDED.brew_drinking_level, "
             "notes = EXCLUDED.notes, "
             "beers_pledged = EXCLUDED.beers_pledged, "
-            "score_prediction_riks = EXCLUDED.score_prediction_riks, "
-            "score_prediction_wades = EXCLUDED.score_prediction_wades, "
+            "score_prediction_red = EXCLUDED.score_prediction_red, "
+            "score_prediction_blue = EXCLUDED.score_prediction_blue, "
             "first_to_puke = EXCLUDED.first_to_puke, "
             "first_to_tap_out = EXCLUDED.first_to_tap_out, "
             "updated_at = NOW()",
             (person_id, arrival_day, arrival_time or None,
              skill_1 or None, skill_2 or None, skill_3 or None,
              brew_drinking_level or None, notes or None,
-             beers_pledged or None, score_prediction_riks or None, score_prediction_wades or None,
+             beers_pledged or None, score_prediction_red or None, score_prediction_blue or None,
              first_to_puke or None, first_to_tap_out or None),
-        )
-
-        cur.execute(
-            "INSERT INTO erik_dossier_responses "
-            "(person_id, best_erik_story, erik_in_one_word, eriks_nickname, over_under_marriage) "
-            "VALUES (%s, %s, %s, %s, %s) "
-            "ON CONFLICT (person_id) DO UPDATE SET "
-            "best_erik_story = EXCLUDED.best_erik_story, "
-            "erik_in_one_word = EXCLUDED.erik_in_one_word, "
-            "eriks_nickname = EXCLUDED.eriks_nickname, "
-            "over_under_marriage = EXCLUDED.over_under_marriage, "
-            "updated_at = NOW()",
-            (person_id, best_erik_story or None, erik_in_one_word or None,
-             eriks_nickname or None, over_under_marriage or None),
         )
 
         return person_id
@@ -400,6 +374,36 @@ def assign_team(conn, person_id: int, team_name: str | None):
             "UPDATE people SET team_name = %s, updated_at = NOW() WHERE id = %s",
             (team_name or None, person_id),
         )
+
+
+def delete_person(conn, person_id: int) -> bool:
+    """Fully purge a person and every row that references them.
+
+    No FK uses ON DELETE CASCADE, so children are removed in dependency order
+    inside a single transaction. Returns False if the person does not exist.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM people WHERE id = %s", (person_id,))
+        if cur.fetchone() is None:
+            return False
+
+        # admin_adjustments references both people and brew_log entries.
+        cur.execute(
+            "DELETE FROM admin_adjustments "
+            "WHERE person_id = %s "
+            "OR related_entry_id IN (SELECT id FROM brew_log WHERE person_id = %s)",
+            (person_id, person_id),
+        )
+        # Reversal rows self-reference brew_log; drop them before originals.
+        cur.execute(
+            "DELETE FROM brew_log "
+            "WHERE reversal_of_entry_id IN (SELECT id FROM brew_log WHERE person_id = %s)",
+            (person_id,),
+        )
+        cur.execute("DELETE FROM brew_log WHERE person_id = %s", (person_id,))
+        cur.execute("DELETE FROM team_survey_responses WHERE person_id = %s", (person_id,))
+        cur.execute("DELETE FROM people WHERE id = %s", (person_id,))
+        return True
 
 
 def finalize_teams(conn) -> int:
@@ -533,7 +537,7 @@ def get_brew_timeseries(conn, scale: str = "day") -> dict:
     for bucket, team, cnt in team_rows:
         team_counts.setdefault(bucket, {})[team] = cnt
 
-    teams = ["Riks", "Wades"]
+    teams = ["Red", "Blue"]
     labels = [_fmt_bucket(b, scale) for b in all_buckets]
     total = [sum(team_counts[b].get(t, 0) for t in teams) for b in all_buckets]
     by_team = {t: [team_counts[b].get(t, 0) for b in all_buckets] for t in teams}
@@ -603,10 +607,10 @@ def reset_weekend_data(conn) -> None:
 def get_survey_responses(conn) -> list[dict]:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
-            SELECT p.full_name, tsr.expected_arrival_day, tsr.expected_arrival_time,
+            SELECT p.id, p.full_name, tsr.expected_arrival_day, tsr.expected_arrival_time,
                    tsr.skill_1, tsr.skill_2, tsr.skill_3,
                    tsr.brew_drinking_level, tsr.notes,
-                   tsr.beers_pledged, tsr.score_prediction_riks, tsr.score_prediction_wades,
+                   tsr.beers_pledged, tsr.score_prediction_red, tsr.score_prediction_blue,
                    tsr.first_to_puke, tsr.first_to_tap_out
             FROM team_survey_responses tsr
             JOIN people p ON tsr.person_id = p.id
@@ -621,13 +625,31 @@ def get_survey_responses(conn) -> list[dict]:
         return result
 
 
-def get_dossier_responses(conn) -> list[dict]:
+def get_brew_log_export(conn) -> list[dict]:
+    """Full brew log for CSV download: timestamp + true full name (not nickname)."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
-            SELECT p.full_name, edr.best_erik_story, edr.erik_in_one_word,
-                   edr.eriks_nickname, edr.over_under_marriage, edr.created_at
-            FROM erik_dossier_responses edr
-            JOIN people p ON edr.person_id = p.id
+            SELECT bl.created_at, p.full_name, bl.team_name, bl.source,
+                   bl.status, bl.reversal_of_entry_id
+            FROM brew_log bl
+            JOIN people p ON bl.person_id = p.id
+            ORDER BY bl.created_at
+        """)
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_survey_export(conn) -> list[dict]:
+    """Full survey for CSV download, keyed by full name and timestamp."""
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("""
+            SELECT p.full_name, tsr.created_at,
+                   tsr.expected_arrival_day, tsr.expected_arrival_time,
+                   tsr.skill_1, tsr.skill_2, tsr.skill_3,
+                   tsr.brew_drinking_level, tsr.beers_pledged,
+                   tsr.score_prediction_red, tsr.score_prediction_blue,
+                   tsr.first_to_puke, tsr.first_to_tap_out, tsr.notes
+            FROM team_survey_responses tsr
+            JOIN people p ON tsr.person_id = p.id
             ORDER BY p.full_name
         """)
         return [dict(r) for r in cur.fetchall()]

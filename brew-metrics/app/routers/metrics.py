@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 
-from app import queries
+from app import exports, queries
 from app.db import get_db_conn
+
+_BREW_LOG_COLUMNS = [
+    "created_at", "full_name", "team_name", "source", "status",
+    "reversal_of_entry_id",
+]
 
 router = APIRouter()
 
@@ -32,3 +37,9 @@ def metrics_page(
         "timeseries": timeseries,
         "avg_label": _SCALE_LABELS[scale],
     })
+
+
+@router.get("/metrics/export")
+def metrics_export(conn=Depends(get_db_conn)):
+    rows = queries.get_brew_log_export(conn)
+    return exports.csv_response(rows, _BREW_LOG_COLUMNS, "brew-log")

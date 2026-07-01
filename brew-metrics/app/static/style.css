@@ -1,10 +1,10 @@
 :root {
-    --riks: #f5c000;
-    --riks-text: #c49a00;      /* darker gold — readable on white */
-    --riks-dark: #a07e00;
-    --wades: #1a4d23;
-    --wades-light: #2a6b35;
-    --wades-dark: #112f16;
+    --red: #f5c000;
+    --red-text: #c49a00;      /* darker gold — readable on white */
+    --red-dark: #a07e00;
+    --blue: #1a4d23;
+    --blue-light: #2a6b35;
+    --blue-dark: #112f16;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,26 +25,26 @@ body {
 
 /* Nav */
 .main-nav {
-    background: var(--wades);
+    background: var(--blue);
     color: #fff;
     padding: 0.75rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
-.nav-brand { color: var(--riks); text-decoration: none; font-weight: bold; font-size: 1.1rem; }
+.nav-brand { color: var(--red); text-decoration: none; font-weight: bold; font-size: 1.1rem; }
 .nav-links a { color: #c8e6c9; text-decoration: none; margin-left: 1rem; font-size: 0.9rem; }
-.nav-links a:hover { color: var(--riks); }
+.nav-links a:hover { color: var(--red); }
 
 .admin-nav {
     display: flex;
     gap: 1rem;
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--wades);
+    border-bottom: 2px solid var(--blue);
 }
-.admin-nav a { text-decoration: none; color: var(--wades); font-weight: 600; font-size: 0.9rem; }
-.admin-nav a:hover { color: var(--wades-light); }
+.admin-nav a { text-decoration: none; color: var(--blue); font-weight: 600; font-size: 0.9rem; }
+.admin-nav a:hover { color: var(--blue-light); }
 
 /* Headings */
 h1 { margin: 1rem 0 0.75rem; font-size: 1.5rem; }
@@ -61,22 +61,22 @@ form input, form select, form textarea {
     margin-top: 0.25rem;
 }
 form input:focus, form select:focus, form textarea:focus {
-    outline: 2px solid var(--wades-light);
-    border-color: var(--wades);
+    outline: 2px solid var(--blue-light);
+    border-color: var(--blue);
 }
 form fieldset { border: 1px solid #ddd; padding: 0.75rem; margin-top: 0.75rem; border-radius: 4px; }
 form fieldset legend { font-weight: 600; font-size: 0.9rem; }
 button {
     margin-top: 1rem;
     padding: 0.6rem 1.5rem;
-    background: var(--wades);
+    background: var(--blue);
     color: #fff;
     border: none;
     border-radius: 4px;
     font-size: 1rem;
     cursor: pointer;
 }
-button:hover { background: var(--wades-light); }
+button:hover { background: var(--blue-light); }
 button:disabled { background: #9ca3af; cursor: not-allowed; }
 
 .big-button {
@@ -88,13 +88,13 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
 }
 
 .byob-button {
-    background: var(--riks-text);
+    background: var(--red-text);
 }
-.byob-button:hover { background: var(--riks-dark); }
+.byob-button:hover { background: var(--red-dark); }
 
 /* Alerts */
 .alert { padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; }
-.alert-success { background: #d6f0da; color: var(--wades-dark); border-left: 4px solid var(--wades); }
+.alert-success { background: #d6f0da; color: var(--blue-dark); border-left: 4px solid var(--blue); }
 .alert-error { background: #fee2e2; color: #991b1b; }
 
 /* Scores */
@@ -109,8 +109,8 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
 .team-score h2 { margin: 0; font-size: 1.1rem; }
 .score { font-size: 2.5rem; font-weight: bold; }
 .vs { font-size: 1.2rem; color: #666; }
-.team-1 { color: var(--riks-text); }
-.team-2 { color: var(--wades); }
+.team-1 { color: var(--red-text); }
+.team-2 { color: var(--blue); }
 
 /* Progress bars */
 .keg-bars { margin: 0.5rem 0; }
@@ -129,8 +129,8 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
     transition: width 0.3s;
     min-width: 2px;
 }
-.progress-fill.team-1 { background: var(--riks); }
-.progress-fill.team-2 { background: var(--wades); }
+.progress-fill.team-1 { background: var(--red); }
+.progress-fill.team-2 { background: var(--blue); }
 
 /* Events */
 .event-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -143,8 +143,8 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
     border-radius: 4px;
     border-left: 4px solid #e5e7eb;
 }
-.event-card.status-completed { border-left-color: var(--wades); }
-.event-card.status-in_progress { border-left-color: var(--riks); }
+.event-card.status-completed { border-left-color: var(--blue); }
+.event-card.status-in_progress { border-left-color: var(--red); }
 .event-card.status-pending { border-left-color: #e5e7eb; }
 .event-name { font-weight: 600; }
 .event-status { font-size: 0.8rem; color: #666; }
@@ -154,12 +154,12 @@ button:disabled { background: #9ca3af; cursor: not-allowed; }
 /* Tables */
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 0.9rem; }
-th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
+th { font-weight: 600; background: #f0f7f1; color: var(--blue-dark); }
 .data-table { margin: 0.5rem 0; }
 .leaderboard td:last-child, .leaderboard th:last-child { text-align: right; }
 
 /* Beer stats */
-.brew-stats { background: #faf7e6; padding: 0.75rem; border-radius: 4px; margin-top: 0.75rem; border-left: 3px solid var(--riks); }
+.brew-stats { background: #faf7e6; padding: 0.75rem; border-radius: 4px; margin-top: 0.75rem; border-left: 3px solid var(--red); }
 .brew-stats p { margin: 0.25rem 0; }
 .keg-summary { display: flex; gap: 1.5rem; margin: 0.5rem 0; }
 
@@ -171,8 +171,15 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
     padding: 0.25rem 0.75rem;
     font-size: 0.85rem;
 }
-.finalize-btn { background: var(--wades); margin-top: 1rem; }
-.finalize-btn:hover { background: var(--wades-light); }
+.finalize-btn { background: var(--blue); margin-top: 1rem; }
+.finalize-btn:hover { background: var(--blue-light); }
+.delete-btn {
+    margin: 0;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.8rem;
+    background: #b91c1c;
+}
+.delete-btn:hover { background: #dc2626; }
 .undo-btn {
     margin: 0;
     padding: 0.2rem 0.5rem;
@@ -195,30 +202,141 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 /* Hints */
 .hint { font-size: 0.8rem; color: #666; margin-top: 0.5rem; font-style: italic; }
 
-/* TV Layout */
-.tv-layout { padding: 2rem; max-width: none; }
-.tv-header {
+/* TV Layout — full-screen kiosk dashboard.
+   The /tv page escapes the 800px .container cap and fills the whole viewport:
+   the body becomes a flex column so the event banner keeps its height and the
+   container (and the layout inside it) stretches to fill the remaining width
+   and height. */
+.page-tv {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 3rem;
-    margin-bottom: 2rem;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
 }
-.tv-team { text-align: center; }
-.tv-team h1 { font-size: 3rem; margin: 0; }
-.tv-score { font-size: 5rem; font-weight: bold; }
-.tv-vs { font-size: 2rem; color: #666; }
-.tv-body {
+.page-tv .container {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+.tv-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* Top stats band: total beers + per-team beers/keg/points */
+.tv-statband {
+    flex: 0 0 auto;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: auto 1fr;
+    align-items: center;
     gap: 2rem;
 }
-.tv-keg h2, .tv-events h2, .tv-leaderboard h2 { margin-top: 0; }
+.tv-stat-total {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1.5rem;
+}
+.tv-total-count { font-size: 4.5rem; font-weight: 800; line-height: 1; }
+.tv-total-label {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #666;
+    margin-top: 0.25rem;
+}
+.tv-stat-teams {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.tv-team-stat {
+    border-radius: 10px;
+    padding: 0.85rem 1.25rem;
+    text-align: center;
+}
+.team-1-stat { background: var(--red); color: var(--blue-dark); }
+.team-2-stat { background: var(--blue); color: var(--red); }
+.tv-team-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.tv-team-beers { font-size: 3rem; font-weight: 800; line-height: 1.05; }
+.tv-team-sub { font-size: 1rem; opacity: 0.8; margin-bottom: 0.5rem; }
+.tv-points-track {
+    position: relative;
+    height: 2rem;
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.tv-points-fill {
+    position: absolute;
+    left: 0; top: 0;
+    height: 100%;
+    max-width: 100%;
+    border-radius: 6px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tv-points-fill.team-1-fill { background: var(--blue); }
+.tv-points-fill.team-2-fill { background: var(--red); }
+.tv-points-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1.1rem;
+    z-index: 2;
+}
+
+/* Bottom region: two independently scrolling columns fill remaining height */
+.tv-columns {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+.tv-col {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 10px;
+    border-top: 4px solid var(--red);
+    padding: 1rem 1.25rem;
+}
+.tv-col:last-child { border-top-color: var(--blue); }
+.tv-col h2 {
+    flex: 0 0 auto;
+    margin: 0 0 0.75rem;
+    text-align: center;
+    font-size: 1.6rem;
+}
+.tv-col-body { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.tv-col .leaderboard { font-size: 1.4rem; }
+.tv-col .leaderboard th, .tv-col .leaderboard td { padding: 0.4rem 0.6rem; }
+.tv-col .event-card { font-size: 1.2rem; }
 
 @media (max-width: 768px) {
-    .tv-body { grid-template-columns: 1fr; }
-    .tv-team h1 { font-size: 2rem; }
-    .tv-score { font-size: 3rem; }
+    .tv-layout { height: auto; }
+    .tv-statband { grid-template-columns: 1fr; }
+    .tv-columns { grid-template-columns: 1fr; }
+    .tv-col-body { overflow: visible; }
 }
 
 /* Admin team roster */
@@ -243,11 +361,11 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 
 /* Event Banner */
 .event-banner {
-    background: linear-gradient(135deg, var(--wades-dark) 0%, var(--wades) 50%, var(--wades-dark) 100%);
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 50%, var(--blue-dark) 100%);
     padding: 1.1rem 1rem;
     position: relative;
     overflow: hidden;
-    border-bottom: 2px solid var(--riks);
+    border-bottom: 2px solid var(--red);
     display: grid;
     place-items: center;
 }
@@ -270,7 +388,7 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 .banner-text {
     font-family: 'Pacifico', cursive;
     font-size: clamp(1.4rem, 4.5vw, 2.4rem);
-    background: linear-gradient(90deg, var(--riks-dark) 0%, var(--riks) 30%, #fde68a 50%, var(--riks) 70%, var(--riks-dark) 100%);
+    background: linear-gradient(90deg, var(--red-dark) 0%, var(--red) 30%, #fde68a 50%, var(--red) 70%, var(--red-dark) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -282,7 +400,7 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 }
 
 .banner-deco {
-    color: var(--riks);
+    color: var(--red);
     font-size: 1rem;
     opacity: 0.7;
     animation: banner-pulse 3s ease-in-out infinite;
@@ -341,12 +459,12 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
     text-align: center;
 }
 .team-1-card {
-    background: var(--riks);
-    color: var(--wades);
+    background: var(--red);
+    color: var(--blue);
 }
 .team-2-card {
-    background: var(--wades);
-    color: var(--riks);
+    background: var(--blue);
+    color: var(--red);
 }
 .team-stat-name {
     font-size: 0.8rem;
@@ -369,6 +487,16 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 /* Centered dashboard section headers */
 .page-dashboard h2 { text-align: center; }
 
+/* Low-emphasis link to the TV kiosk view, at the very bottom of /dashboard */
+.tv-link-footer { text-align: center; margin-top: 1rem; }
+.tv-link {
+    font-size: 0.8rem;
+    color: #999;
+    text-decoration: none;
+    letter-spacing: 0.04em;
+}
+.tv-link:hover { color: var(--blue); }
+
 /* Dashboard section cards */
 .dash-section {
     border-radius: 8px;
@@ -378,11 +506,11 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 }
 .dash-section--gold {
     background: #fffbea;
-    border-top-color: var(--riks);
+    border-top-color: var(--red);
 }
 .dash-section--green {
     background: #f0f7f1;
-    border-top-color: var(--wades);
+    border-top-color: var(--blue);
 }
 
 /* Points progress bars */
@@ -416,8 +544,8 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
     border-radius: 6px;
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.team-1-fill { background: var(--riks); }
-.team-2-fill { background: var(--wades); }
+.team-1-fill { background: var(--red); }
+.team-2-fill { background: var(--blue); }
 .points-bar-text {
     position: absolute;
     inset: 0;
@@ -460,8 +588,8 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
     padding: 0.65rem 0.75rem;
     margin-bottom: 0.5rem;
 }
-.event-scoring-card.status-completed { border-left-color: var(--wades); }
-.event-scoring-card.status-in_progress { border-left-color: var(--riks); }
+.event-scoring-card.status-completed { border-left-color: var(--blue); }
+.event-scoring-card.status-in_progress { border-left-color: var(--red); }
 .event-card-header {
     display: flex;
     justify-content: space-between;
@@ -487,10 +615,10 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
     font-size: 0.9rem;
     font-weight: 700;
 }
-.btn-riks  { background: var(--riks); color: var(--wades-dark); }
-.btn-wades { background: var(--wades); color: #fff; }
-.btn-riks:hover  { background: #e0b000; }
-.btn-wades:hover { background: var(--wades-light); }
+.btn-red  { background: var(--red); color: var(--blue-dark); }
+.btn-blue { background: var(--blue); color: #fff; }
+.btn-red:hover  { background: #e0b000; }
+.btn-blue:hover { background: var(--blue-light); }
 .winner-won  { opacity: 1; }
 .winner-lost { opacity: 0.22; }
 .round-rows { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -519,7 +647,7 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 .reset-event-btn:hover { background: #6b7280; }
 .beers-drank-display {
     background: #fffbea;
-    border-left: 4px solid var(--riks);
+    border-left: 4px solid var(--red);
     border-radius: 4px;
     padding: 0.6rem 0.75rem;
     display: flex;
@@ -627,11 +755,27 @@ th { font-weight: 600; background: #f0f7f1; color: var(--wades-dark); }
 .metrics-btn:last-child  { border-radius: 0 6px 6px 0; border-left: none; }
 .metrics-btn:not(:first-child):not(:last-child) { border-left: none; }
 .metrics-btn.active {
-    background: var(--riks);
-    border-color: var(--riks-dark);
+    background: var(--red);
+    border-color: var(--red-dark);
     color: #1a1a1a;
 }
 .metrics-btn:hover:not(.active) { background: #f3f4f6; }
+
+.download-btn {
+    display: inline-block;
+    margin: 0.5rem 0 1rem;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1.5px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+    color: #444;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.download-btn:hover { background: #f3f4f6; }
 
 .metrics-stats {
     display: grid;

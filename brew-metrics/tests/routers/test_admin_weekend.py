@@ -74,7 +74,7 @@ def test_weekend_page_shows_kicked_off_after_start(admin_client):
 def test_participant_get_shows_kickoff_banner_when_not_started(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert "1000 Beers Kickoff" in r.text
+    assert "Brew Combine Kickoff" in r.text
 
 
 def test_log_brew_blocked_when_not_started(client, seeded_db):
@@ -88,7 +88,7 @@ def test_log_brew_blocked_when_not_started(client, seeded_db):
 
     r = client.post("/log-brew", data={"person_id": str(pid), "source": "keg"})
     assert r.status_code == 200
-    assert "1000 Beers Kickoff" in r.text
+    assert "Brew Combine Kickoff" in r.text
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
@@ -125,7 +125,7 @@ def test_log_brew_allowed_when_started(admin_client, client, seeded_db):
 def test_events_get_shows_kickoff_banner_when_not_started(client):
     r = client.get("/events")
     assert r.status_code == 200
-    assert "1000 Beers Kickoff" in r.text
+    assert "Brew Combine Kickoff" in r.text
 
 
 def test_event_score_blocked_when_not_started(client, seeded_db):
@@ -140,7 +140,7 @@ def test_event_score_blocked_when_not_started(client, seeded_db):
         conn.close()
 
     r = client.post("/events/winner", data={
-        "event_id": str(eid), "winner_team": "Riks", "person_id": str(pid),
+        "event_id": str(eid), "winner_team": "Red", "person_id": str(pid),
     }, follow_redirects=False)
     assert r.status_code == 303
     assert "error=not_started" in r.headers["location"]
@@ -167,7 +167,7 @@ def test_event_score_allowed_when_started(admin_client, client, seeded_db):
         conn.close()
 
     r = client.post("/events/winner", data={
-        "event_id": str(eid), "winner_team": "Riks", "person_id": str(pid),
+        "event_id": str(eid), "winner_team": "Red", "person_id": str(pid),
     }, follow_redirects=False)
     assert r.status_code == 303
     assert "error" not in r.headers.get("location", "")
@@ -182,7 +182,7 @@ def test_reset_truncates_brew_log(admin_client, seeded_db):
         cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
         pid = cur.fetchone()[0]
         cur.execute(
-            "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, 'Riks', 'keg')", (pid,)
+            "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, 'Red', 'keg')", (pid,)
         )
         conn.commit()
     finally:
@@ -223,7 +223,7 @@ def test_reset_clears_keg_finished_at(admin_client):
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         cur = conn.cursor()
-        cur.execute("UPDATE team_keg_state SET finished_at = NOW() WHERE team_name = 'Riks'")
+        cur.execute("UPDATE team_keg_state SET finished_at = NOW() WHERE team_name = 'Red'")
         conn.commit()
     finally:
         conn.close()
@@ -233,7 +233,7 @@ def test_reset_clears_keg_finished_at(admin_client):
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         cur = conn.cursor()
-        cur.execute("SELECT finished_at FROM team_keg_state WHERE team_name = 'Riks'")
+        cur.execute("SELECT finished_at FROM team_keg_state WHERE team_name = 'Red'")
         assert cur.fetchone()[0] is None
     finally:
         conn.close()
@@ -290,7 +290,7 @@ def test_reset_clears_event_round_results(admin_client):
         eid = cur.fetchone()[0]
         cur.execute(
             "INSERT INTO event_round_results (event_id, round_number, winner_team) "
-            "VALUES (%s, 1, 'Riks')",
+            "VALUES (%s, 1, 'Red')",
             (eid,),
         )
         conn.commit()

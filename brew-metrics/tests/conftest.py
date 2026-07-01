@@ -9,7 +9,6 @@ os.environ.setdefault("DATABASE_URL", "postgresql://brewadmin:localdev@localhost
 os.environ.setdefault("ADMIN_USERNAME", "admin")
 os.environ.setdefault("ADMIN_PASSWORD", "admin")
 os.environ.setdefault("JWT_SECRET", "test-secret")
-os.environ.setdefault("DOSSIER_KEY", "test-dossier-key")
 
 _SCHEMA = (Path(__file__).parent.parent / "app" / "schema.sql").read_text()
 
@@ -36,7 +35,7 @@ def _db_setup(_admin_conn):
     )
     cur.execute(
         "DROP TABLE IF EXISTS admin_adjustments, event_results, event_round_results, event_master, "
-        "brew_log, team_keg_state, erik_dossier_responses, team_survey_responses, people, teams CASCADE"
+        "brew_log, team_keg_state, team_survey_responses, people, teams CASCADE"
     )
     cur.execute(_SCHEMA)
     cur.close()
@@ -51,10 +50,10 @@ def _clean_db(_admin_conn):
     cur = _admin_conn.cursor()
     cur.execute(
         "TRUNCATE admin_adjustments, event_results, event_round_results, brew_log, "
-        "team_keg_state, erik_dossier_responses, team_survey_responses, people, teams RESTART IDENTITY CASCADE"
+        "team_keg_state, team_survey_responses, people, teams RESTART IDENTITY CASCADE"
     )
-    cur.execute("INSERT INTO teams (name) VALUES ('Riks'), ('Wades')")
-    cur.execute("INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')")
+    cur.execute("INSERT INTO teams (name) VALUES ('Red'), ('Blue')")
+    cur.execute("INSERT INTO team_keg_state (team_name) VALUES ('Red'), ('Blue')")
     # event_master is catalog data (not truncated), but its status is mutable —
     # reset it so per-event status changes don't leak between tests.
     cur.execute("UPDATE event_master SET status = 'pending'")
@@ -78,7 +77,7 @@ def admin_client(client):
     return client
 
 
-def seed_teams(conn, team_1="Riks", team_2="Wades"):
+def seed_teams(conn, team_1="Red", team_2="Blue"):
     # The two fixed teams are already seeded by _clean_db; these inserts are
     # no-ops via ON CONFLICT. Returning the names lets tests use them as the
     # canonical team handles without assuming any extra teams exist.

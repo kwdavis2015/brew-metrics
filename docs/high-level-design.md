@@ -2,9 +2,9 @@
 
 ## 1. Project Summary
 
-brew-metrics is a short-lived event web app for a bachelor party weekend (June 25–27, 2026) at a lake house with approximately 20 attendees. It tracks brews consumption per person and team, runs a live team scoreboard across ~20 weekend events, and assigns participants to teams via a pre-weekend survey. The two competing teams are **Riks** and **Wades** — they are fixed (seeded in the schema); there is no team-creation flow. Admins manage team membership, not the teams themselves.
+brew-metrics is a short-lived event web app for a weekend competition with approximately 20 attendees. It tracks brews consumption per person and team, runs a live team scoreboard across ~20 weekend events, and assigns participants to teams via a pre-weekend survey. The two competing teams are **Red** and **Blue** — they are fixed (seeded in the schema); there is no team-creation flow. Admins manage team membership, not the teams themselves.
 
-This document covers architecture, technology decisions, infrastructure, and security. The original requirements were captured in `riks-vs-wades-dashboard-spec.md`, which is kept for historical reference only (gitignored).
+This document covers architecture, technology decisions, infrastructure, and security. The original requirements were captured in `original-dashboard-spec.md`, which is kept for historical reference only (gitignored).
 
 ---
 
@@ -110,7 +110,7 @@ Phone browser / TV browser
 - The container is **stateless** — all state lives in RDS. Any restart or scale event is safe.
 - Brew log is **append-only**. No row is ever deleted or updated. Corrections are new rows with `status: reversed` and `reversal_of_entry_id` set.
 - Brew Cup points are **computed at query time** from the live brew log using a proportional formula: leading team gets the full `points_available` (200), trailing team gets `round((their_total / leader_total) * 200)`. Never stored statically.
-- Keg totals are enforced at the API layer: the server rejects keg brew entries that would push a team past 330. Keg totals are computed live from `brew_log WHERE status = 'active' AND source = 'keg'` rather than maintained as a counter.
+- Keg totals are computed live from `brew_log WHERE status = 'active' AND source = 'keg'` rather than maintained as a counter.
 
 ---
 
@@ -145,7 +145,7 @@ Phone browser / TV browser
 1. Admin shares `/survey` link with all ~20 invitees ~1 week out
 2. Invitees complete the form — skills, brews rank, arrival/departure times
 3. Admin opens `/admin/survey` to review all responses
-4. Admin uses the team builder view (skill balance + arrival time view) to assign each person to Riks or Wades
+4. Admin uses the team builder view (skill balance + arrival time view) to assign each person to Red or Blue
 5. Admin finalizes teams — `people` records are updated with `team_name` and status `active`
 
 **Day-of (walk-up):**
@@ -171,13 +171,13 @@ Full schema defined in `brew-metrics/app/schema.sql` (applied automatically on a
 
 | Table | Purpose |
 |---|---|
-| `teams` | Fixed seed of `Riks` + `Wades`; FK target for people/brew_log/keg state. Not added to at runtime |
+| `teams` | Fixed seed of `Red` + `Blue`; FK target for people/brew_log/keg state. Not added to at runtime |
 | `people` | Participant identity, team assignment, userid |
 | `team_survey_responses` | Pre-weekend skill/arrival survey results |
 | `brew_log` | Append-only brew entries; reversals are rows not deletes |
-| `team_keg_state` | Per-team keg capacity (330), logged total, finish timestamp |
+| `team_keg_state` | Per-team keg logged total and finish timestamp |
 | `event_master` | Event catalog with status and `points_available` |
-| `event_results` | Per-event Riks/Wades points, entered by admin |
+| `event_results` | Per-event Red/Blue points, entered by admin |
 | `admin_adjustments` | Audit ledger for manual corrections and overrides |
 
 ---
@@ -205,12 +205,12 @@ TV dashboard auto-refreshes every 15–30 seconds via HTMX polling or SSE. No ma
 This is the primary pre-event admin tool. It needs:
 
 - **Responses table** — all survey submissions with arrival time, ranked skills, brew skill rank
-- **Skill balance panel** — for each skill category, shows how the current draft split distributes talent across Riks/Wades
+- **Skill balance panel** — for each skill category, shows how the current draft split distributes talent across Red/Blue
 - **Arrival timeline** — visual or tabular view of who arrives Thursday vs. Friday so teams aren't lopsided at the start
-- **Team assignment controls** — dropdown per person to assign Riks / Wades / Unassigned (auto-submits on change)
+- **Team assignment controls** — dropdown per person to assign Red / Blue / Unassigned (auto-submits on change)
 - **Finalize button** — locks team assignments and marks all assigned people as `active`; unassigned respondents remain `pre_registered`
 - **Add person manually** — for walk-ups or people who skipped the survey
-- **Team roster** — read-only view grouping all participants by team (Riks / Wades / Unassigned) with per-team counts, for an at-a-glance view of the whole team
+- **Team roster** — read-only view grouping all participants by team (Red / Blue / Unassigned) with per-team counts, for an at-a-glance view of the whole team
 
 ---
 
@@ -230,11 +230,11 @@ Invitees complete /survey on their phones
 Admin reviews /admin/survey
   → checks skill balance across proposed split
   → checks arrival timeline for early/late skew
-  → assigns each person to Riks or Wades
+  → assigns each person to Red or Blue
   → clicks Finalize
         │
         ▼
-people rows updated (status: active, team_name: Riks|Wades)
+people rows updated (status: active, team_name: Red|Blue)
         │
         ▼
 Event weekend begins

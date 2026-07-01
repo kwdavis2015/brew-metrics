@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "brew-metrics"
 version = "0.1.0"
-description = "Bachelor party weekend brew tracking and event scoreboard"
+description = "Weekend competition brew tracking and event scoreboard"
 authors = []
 packages = [{ include = "app" }]
 

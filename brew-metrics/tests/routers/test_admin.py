@@ -79,7 +79,7 @@ def test_team_creation_route_removed(admin_client):
 
 def test_admin_survey_shows_team_roster(admin_client):
     admin_client.post("/admin/survey/add-person", data={
-        "full_name": "Roster Guy", "nickname": "RG", "team_name": "Riks",
+        "full_name": "Roster Guy", "nickname": "RG", "team_name": "Red",
     })
     response = admin_client.get("/admin/survey")
     assert response.status_code == 200
@@ -143,7 +143,7 @@ def test_admin_save_event_winner(admin_client, seeded_db):
 
     response = admin_client.post("/admin/events/winner", data={
         "event_id": str(eid),
-        "winner_team": "Riks",
+        "winner_team": "Red",
     }, follow_redirects=False)
     assert response.status_code == 303
 
@@ -193,7 +193,7 @@ def test_admin_save_round_result(admin_client, seeded_db):
     response = admin_client.post("/admin/events/round", data={
         "event_id": str(eid),
         "round_number": "1",
-        "winner_team": "Wades",
+        "winner_team": "Blue",
     }, follow_redirects=False)
     assert response.status_code == 303
 
@@ -203,7 +203,7 @@ def test_admin_save_round_result(admin_client, seeded_db):
         "SELECT winner_team FROM event_round_results WHERE event_id = %s AND round_number = 1",
         (eid,),
     )
-    assert cur.fetchone()[0] == "Wades"
+    assert cur.fetchone()[0] == "Blue"
     cur.close()
     conn.close()
 
@@ -217,7 +217,7 @@ def test_admin_reset_event(admin_client, seeded_db):
     cur.close()
     conn.close()
 
-    admin_client.post("/admin/events/winner", data={"event_id": str(eid), "winner_team": "Riks"})
+    admin_client.post("/admin/events/winner", data={"event_id": str(eid), "winner_team": "Red"})
     admin_client.post("/admin/events/reset", data={"event_id": str(eid)}, follow_redirects=False)
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
@@ -232,7 +232,7 @@ def test_admin_reset_event(admin_client, seeded_db):
 
 def test_admin_winner_requires_auth(client, seeded_db):
     response = client.post("/admin/events/winner", data={
-        "event_id": "1", "winner_team": "Riks",
+        "event_id": "1", "winner_team": "Red",
     }, follow_redirects=False)
     assert response.status_code == 303
     assert "/admin/login" in response.headers["location"]
@@ -240,7 +240,7 @@ def test_admin_winner_requires_auth(client, seeded_db):
 
 def test_admin_round_requires_auth(client, seeded_db):
     response = client.post("/admin/events/round", data={
-        "event_id": "1", "round_number": "1", "winner_team": "Riks",
+        "event_id": "1", "round_number": "1", "winner_team": "Red",
     }, follow_redirects=False)
     assert response.status_code == 303
     assert "/admin/login" in response.headers["location"]
@@ -288,7 +288,7 @@ def test_update_event_status_overrides_completed(admin_client, seeded_db):
 
     # Scoring auto-completes the event...
     admin_client.post("/admin/events/winner", data={
-        "event_id": str(eid), "winner_team": "Riks",
+        "event_id": str(eid), "winner_team": "Red",
     }, follow_redirects=False)
     # ...and the admin can override it back to in_progress.
     admin_client.post("/admin/events/status", data={
@@ -402,6 +402,113 @@ def test_add_person_manually(admin_client, seeded_db):
     conn.close()
 
 
+def test_delete_person_purges_all_data(admin_client, seeded_db):
+    import os, psycopg2
+    # Full survey submission populates people + survey rows.
+    admin_client.post("/survey", data={
+        "full_name": "Test Bot",
+        "expected_arrival_day": "Friday",
+    })
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Test Bot'")
+    pid = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/survey/delete-person", data={
+        "person_id": str(pid),
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM people WHERE id = %s", (pid,))
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT count(*) FROM team_survey_responses WHERE person_id = %s", (pid,))
+    assert cur.fetchone()[0] == 0
+    cur.close()
+    conn.close()
+
+
+def test_delete_person_purges_brews_and_reversals(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
+    pid = cur.fetchone()[0]
+    cur.execute(
+        "INSERT INTO brew_log (person_id, team_name, source) VALUES (%s, %s, 'keg') RETURNING id",
+        (pid, t1),
+    )
+    entry_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Create a reversal row (self-referencing brew_log) before deleting.
+    admin_client.post("/admin/brews/reverse", data={"entry_id": str(entry_id)})
+
+    response = admin_client.post("/admin/survey/delete-person", data={
+        "person_id": str(pid),
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM brew_log WHERE person_id = %s", (pid,))
+    assert cur.fetchone()[0] == 0
+    cur.execute("SELECT count(*) FROM people WHERE id = %s", (pid,))
+    assert cur.fetchone()[0] == 0
+    cur.close()
+    conn.close()
+
+
+def test_delete_person_purges_admin_adjustments(admin_client, seeded_db):
+    import os, psycopg2
+    t1, _ = seeded_db
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM people WHERE full_name = 'Mike Davis'")
+    pid = cur.fetchone()[0]
+    cur.execute(
+        "INSERT INTO admin_adjustments (adjustment_type, person_id, reason, entered_by) "
+        "VALUES ('manual', %s, 'test', 'admin')",
+        (pid,),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    response = admin_client.post("/admin/survey/delete-person", data={
+        "person_id": str(pid),
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    cur = conn.cursor()
+    cur.execute("SELECT count(*) FROM admin_adjustments WHERE person_id = %s", (pid,))
+    assert cur.fetchone()[0] == 0
+    cur.close()
+    conn.close()
+
+
+def test_delete_nonexistent_person_is_noop(admin_client, seeded_db):
+    response = admin_client.post("/admin/survey/delete-person", data={
+        "person_id": "999999",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+
+
+def test_delete_person_requires_auth(client, seeded_db):
+    response = client.post("/admin/survey/delete-person", data={
+        "person_id": "1",
+    }, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/admin/login" in response.headers["location"]
+
+
 def test_admin_add_brew(admin_client, seeded_db):
     import os, psycopg2
     t1, _ = seeded_db
@@ -450,7 +557,7 @@ def test_admin_add_brew_byob(admin_client, seeded_db):
     conn.close()
 
 
-def test_admin_add_brew_override_keg_cap(admin_client, seeded_db):
+def test_admin_add_brew_logs_beyond_old_cap(admin_client, seeded_db):
     import os, psycopg2
     t1, _ = seeded_db
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
@@ -469,7 +576,6 @@ def test_admin_add_brew_override_keg_cap(admin_client, seeded_db):
     response = admin_client.post("/admin/brews/add", data={
         "person_id": str(pid),
         "source": "keg",
-        "admin_override": "true",
     }, follow_redirects=False)
     assert response.status_code == 303
 

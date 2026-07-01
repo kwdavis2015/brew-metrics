@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS teams (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-INSERT INTO teams (name) VALUES ('Riks'), ('Wades')
+INSERT INTO teams (name) VALUES ('Red'), ('Blue')
 ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS people (
@@ -49,11 +49,10 @@ CREATE TABLE IF NOT EXISTS brew_log (
 
 CREATE TABLE IF NOT EXISTS team_keg_state (
     team_name TEXT PRIMARY KEY REFERENCES teams(name),
-    capacity INTEGER NOT NULL DEFAULT 330,
     finished_at TIMESTAMPTZ
 );
 
-INSERT INTO team_keg_state (team_name) VALUES ('Riks'), ('Wades')
+INSERT INTO team_keg_state (team_name) VALUES ('Red'), ('Blue')
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS event_master (

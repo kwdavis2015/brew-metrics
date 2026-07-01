@@ -19,14 +19,10 @@ _FULL_DATA = {
     "skill_3": "Trash Talk",
     "notes": "I will win",
     "beers_pledged": "30",
-    "score_prediction_riks": "500",
-    "score_prediction_wades": "400",
+    "score_prediction_red": "500",
+    "score_prediction_blue": "400",
     "first_to_puke": "Dave",
     "first_to_tap_out": "Steve",
-    "best_erik_story": "He jumped off a roof",
-    "erik_in_one_word": "feral",
-    "eriks_nickname": "The Liability",
-    "over_under_marriage": "6 years",
 }
 
 
@@ -77,7 +73,7 @@ def test_survey_saves_new_fields(client):
         cur = conn.cursor()
         cur.execute("""
             SELECT tsr.brew_drinking_level, tsr.beers_pledged,
-                   tsr.score_prediction_riks, tsr.score_prediction_wades,
+                   tsr.score_prediction_red, tsr.score_prediction_blue,
                    tsr.first_to_puke, tsr.first_to_tap_out
             FROM team_survey_responses tsr
             JOIN people p ON tsr.person_id = p.id
@@ -91,28 +87,6 @@ def test_survey_saves_new_fields(client):
         assert row[3] == 400
         assert row[4] == "Dave"
         assert row[5] == "Steve"
-        cur.close()
-    finally:
-        conn.close()
-
-
-def test_survey_saves_dossier(client):
-    client.post("/survey", data=_FULL_DATA)
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT edr.best_erik_story, edr.erik_in_one_word, edr.eriks_nickname, edr.over_under_marriage
-            FROM erik_dossier_responses edr
-            JOIN people p ON edr.person_id = p.id
-            WHERE p.full_name = 'Test User'
-        """)
-        row = cur.fetchone()
-        assert row is not None
-        assert row[0] == "He jumped off a roof"
-        assert row[1] == "feral"
-        assert row[2] == "The Liability"
-        assert row[3] == "6 years"
         cur.close()
     finally:
         conn.close()
@@ -137,19 +111,17 @@ def test_survey_resubmit_overwrites(client):
         conn.close()
 
 
-def test_dossier_requires_correct_key(client):
-    response = client.get("/admin/dossier?key=wrong", follow_redirects=False)
-    assert response.status_code == 403
-
-
-def test_dossier_accessible_with_correct_key(client):
-    response = client.get("/admin/dossier?key=test-dossier-key")
+def test_survey_export_is_csv_attachment(client):
+    response = client.get("/survey/export")
     assert response.status_code == 200
-    assert "Dossier" in response.text
+    assert "text/csv" in response.headers["content-type"]
+    assert "attachment" in response.headers["content-disposition"]
+    assert ".csv" in response.headers["content-disposition"]
 
 
-def test_dossier_shows_submissions(client):
+def test_survey_export_includes_name_and_timestamp(client):
     client.post("/survey", data=_FULL_DATA)
-    response = client.get("/admin/dossier?key=test-dossier-key")
-    assert "He jumped off a roof" in response.text
-    assert "feral" in response.text
+    response = client.get("/survey/export")
+    assert "full_name" in response.text          # header row
+    assert "created_at" in response.text
+    assert "Test User" in response.text          # full name

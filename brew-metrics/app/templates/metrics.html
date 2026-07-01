@@ -3,6 +3,8 @@
 {% block content %}
 <h1>Beer Metrics</h1>
 
+<a href="/metrics/export" class="download-btn">⬇ Download Beer Log (CSV)</a>
+
 <div class="metrics-controls">
     <div class="control-group">
         <span class="control-label">Time Scale</span>
@@ -49,10 +51,10 @@
     var data = {{ timeseries | tojson }};
     var group = "{{ group }}";
 
-    var RIKS       = '#f5c000';
-    var RIKS_BG    = 'rgba(245,192,0,0.18)';
-    var WADES      = '#2a6b35';
-    var WADES_BG   = 'rgba(42,107,53,0.18)';
+    var RED       = '#f5c000';
+    var RED_BG    = 'rgba(245,192,0,0.18)';
+    var BLUE      = '#2a6b35';
+    var BLUE_BG   = 'rgba(42,107,53,0.18)';
     var PALETTE    = ['#f5c000','#2a6b35','#ef4444','#3b82f6','#a855f7'];
     var PALETTE_BG = ['rgba(245,192,0,0.15)','rgba(42,107,53,0.15)','rgba(239,68,68,0.15)','rgba(59,130,246,0.15)','rgba(168,85,247,0.15)'];
 
@@ -61,14 +63,14 @@
         datasets = [{
             label: 'Total Beers',
             data: data.total,
-            borderColor: RIKS,
-            backgroundColor: RIKS_BG,
+            borderColor: RED,
+            backgroundColor: RED_BG,
             fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6,
         }];
     } else if (group === 'team') {
         datasets = [
-            { label: 'Riks',  data: data.by_team['Riks']  || [], borderColor: RIKS,  backgroundColor: RIKS_BG,  fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
-            { label: 'Wades', data: data.by_team['Wades'] || [], borderColor: WADES, backgroundColor: WADES_BG, fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
+            { label: 'Red',  data: data.by_team['Red']  || [], borderColor: RED,  backgroundColor: RED_BG,  fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
+            { label: 'Blue', data: data.by_team['Blue'] || [], borderColor: BLUE, backgroundColor: BLUE_BG, fill: true, tension: 0.35, pointRadius: 4, pointHoverRadius: 6 },
         ];
     } else {
         datasets = (data.by_person || []).map(function (p, i) {

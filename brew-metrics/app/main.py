@@ -19,7 +19,6 @@ from app.secrets import load_secrets
 from app.routers import (
     admin,
     admin_brews,
-    admin_dossier,
     admin_events,
     admin_survey,
     admin_weekend,
@@ -80,5 +79,4 @@ app.include_router(admin_survey.router)
 app.include_router(admin_brews.router)
 app.include_router(admin_events.router)
 app.include_router(admin_weekend.router)
-app.include_router(admin_dossier.router)
 app.include_router(metrics.router)

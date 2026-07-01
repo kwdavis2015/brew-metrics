@@ -8,18 +8,7 @@
     <a href="/admin/brews">Beer Log</a>
     <a href="/admin/events">Events</a>
     <a href="/admin/weekend">Weekend</a>
-    <a href="#" onclick="var k=prompt('Dossier key:'); if(k) window.location='/admin/dossier?key='+encodeURIComponent(k); return false;">Dossier</a>
 </nav>
-
-<div class="keg-summary">
-    {% for team in teams %}
-    {% if team in keg_state %}
-    <div class="keg-stat">
-        <strong>{{ team }}:</strong> {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}
-    </div>
-    {% endif %}
-    {% endfor %}
-</div>
 
 <h2>Log a Beer</h2>
 <form method="post" action="/admin/brews/add" class="add-person-form">
@@ -34,9 +23,6 @@
             <option value="keg">Keg</option>
             <option value="byob">BYOB</option>
         </select>
-        <label class="checkbox-label">
-            <input type="checkbox" name="admin_override" value="true"> Override keg cap
-        </label>
         <button type="submit">Log Beer</button>
     </div>
 </form>

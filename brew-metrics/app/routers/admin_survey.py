@@ -30,6 +30,16 @@ def assign_team(
     return RedirectResponse("/admin/survey", status_code=303)
 
 
+@router.post("/admin/survey/delete-person")
+def delete_person(
+    conn=Depends(get_db_conn),
+    _=Depends(require_admin),
+    person_id: int = Form(...),
+):
+    queries.delete_person(conn, person_id)
+    return RedirectResponse("/admin/survey", status_code=303)
+
+
 @router.post("/admin/survey/finalize")
 def finalize_teams(conn=Depends(get_db_conn), _=Depends(require_admin)):
     queries.finalize_teams(conn)

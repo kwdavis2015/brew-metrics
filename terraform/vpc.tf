@@ -69,6 +69,24 @@ resource "aws_subnet" "private" {
   }
 }
 
+# Private subnets use this route table — local VPC route only, no IGW.
+# Without an explicit association, subnets fall back to the unmanaged main route
+# table, which can be modified manually and cause DB connectivity failures.
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name    = "${var.project_name}-private-rt"
+    Project = var.project_name
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
+}
+
 # Security group for ECS Fargate tasks.
 # Ingress on port 8080 from within the VPC allows the ALB (created by ECS Express Mode)
 # to reach the tasks. Egress is open for RDS, ECR pulls, and Secrets Manager calls.

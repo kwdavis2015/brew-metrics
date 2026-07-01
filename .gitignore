@@ -8,12 +8,19 @@ __pycache__/
 # Environment
 .env
 
+# Secrets / keys (never publish)
+*.pem
+*.key
+*.p12
+id_rsa*
+.aws/
+
 # Local note files
 *dev-flow-reference.md
 *to-do.md
 
 # Historical reference only — do not edit, superseded by high-level-design.md
-*riks-vs-wades-dashboard-spec.md
+*original-dashboard-spec.md
 
 # Terraform
 terraform/.terraform/

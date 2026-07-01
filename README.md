@@ -1,6 +1,6 @@
 # brew-metrics
 
-A lightweight web app for a bachelor party weekend (~20 people) at a lake house. Tracks brew consumption per person and team, runs a live scoreboard across weekend events, and handles team creation via a pre-weekend survey. Two teams compete: **Riks** vs **Wades**.
+A lightweight web app for a weekend competition (~20 people). Tracks brew consumption per person and team, runs a live scoreboard across weekend events, and assigns participants to teams via a pre-weekend survey. Two teams compete: **Red** vs **Blue**.
 
 Built with FastAPI, HTMX, Jinja2, and PostgreSQL. Deployed on AWS App Runner with Terraform-managed infrastructure.
 

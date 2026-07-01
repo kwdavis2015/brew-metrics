@@ -25,9 +25,8 @@ def add_brew(
     _=Depends(require_admin),
     person_id: int = Form(...),
     source: str = Form("keg"),
-    admin_override: bool = Form(False),
 ):
-    queries.admin_log_brew(conn, person_id, source, admin_override)
+    queries.admin_log_brew(conn, person_id, source)
     return RedirectResponse("/admin/brews", status_code=303)
 
 

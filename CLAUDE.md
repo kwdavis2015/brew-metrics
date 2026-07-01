@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-`brew-metrics` is a lightweight web app built for a bachelor party weekend (~20 people). It tracks brew consumption, runs a live scoreboard across team events, and assigns participants to teams via a pre-weekend survey. The two competing teams are **Riks** and **Wades** — these are fixed; there is no team-creation flow.
+`brew-metrics` is a lightweight web app built for a weekend competition (~20 people). It tracks brew consumption, runs a live scoreboard across team events, and assigns participants to teams via a pre-weekend survey. The two competing teams are **Red** and **Blue** — these are fixed; there is no team-creation flow.
 
 `docs/high-level-design.md` is the authoritative source for architecture, technology decisions, and screen requirements. Read it before making significant design decisions.
 
-> **Note:** `docs/riks-vs-wades-dashboard-spec.md` is kept for historical reference only and is gitignored. Do not update it and do not treat it as an active requirement source. The HLD supersedes it.
+> **Note:** `docs/original-dashboard-spec.md` is kept for historical reference only and is gitignored. Do not update it and do not treat it as an active requirement source. The HLD supersedes it.
 
 ## Stack
 
@@ -66,9 +66,8 @@ docs/                Design documents
 ## Key Domain Concepts
 
 - **Brew Cup** — highest-point event category. Points are computed at query time from live brew totals using a proportional formula; never stored statically until an admin locks them.
-- **Keg cap** — each team's keg is capped at 330 brews. The API layer enforces this; it rejects entries that would exceed the cap unless the request carries an admin override flag.
 - **Append-only brew log** — no row is ever deleted or updated. Reversals are new rows with `status: reversed` and `reversal_of_entry_id` set.
-- **Fixed teams** — only **Riks** and **Wades** exist, seeded by `schema.sql`. There is no team-creation route or UI. Admins manage team *membership* (add/assign people) on `/admin/survey`, which also renders a read-only team roster grouped by team.
+- **Fixed teams** — only **Red** and **Blue** exist, seeded by `schema.sql`. There is no team-creation route or UI. Admins manage team *membership* (add/assign people) on `/admin/survey`, which also renders a read-only team roster grouped by team.
 - **People status lifecycle** — `pre_registered` (survey submitted, no team yet) → `active` (team assigned by admin) → used for brew logging and dashboards.
 - **Honor system identity** — regular users have no auth. They pick their name from the participant list; it is stored in browser `localStorage`. The server trusts the submitted `person_id`.
 
@@ -97,13 +96,13 @@ docs/                Design documents
 ## Data Model
 
 Core tables (see spec §10 for full field lists):
-- `teams` — fixed seed of `Riks` + `Wades`; FK target for `people`, `brew_log`, `team_keg_state`. No rows are added at runtime.
+- `teams` — fixed seed of `Red` + `Blue`; FK target for `people`, `brew_log`, `team_keg_state`. No rows are added at runtime.
 - `people` — identity, team assignment, status (`pre_registered` | `active`)
 - `team_survey_responses` — pre-weekend skill/arrival survey
 - `brew_log` — append-only; reversals are new rows
-- `team_keg_state` — per-team keg capacity, logged total, finish timestamp
+- `team_keg_state` — per-team keg logged total and finish timestamp
 - `event_master` — event catalog with status and `points_available`
-- `event_results` — per-event Riks/Wades points, entered by admin
+- `event_results` — per-event Red/Blue points, entered by admin
 - `admin_adjustments` — audit ledger for manual corrections
 
 ## Testing
@@ -115,7 +114,7 @@ Every feature change must include tests. The test suite uses `pytest` with `http
 **What to test per change:**
 - Happy path for each new route or function
 - Input validation / rejection cases
-- Business rule enforcement (keg cap, append-only log, Brew Cup formula, status transitions)
+- Business rule enforcement (append-only log, Brew Cup formula, status transitions)
 - Auth boundary — protected routes must return 401/403 without a valid JWT; unprotected routes must not require one
 
 **Fixtures:** Use a test database (real Postgres via a `DATABASE_URL` pointed at a local or CI instance) rather than mocking the DB layer. Mock only external AWS calls (Secrets Manager, boto3). Start the DB with `docker compose up -d db` (the app container is not needed to run tests).
@@ -131,4 +130,4 @@ Every feature change must include tests. The test suite uses `pytest` with `http
 | Document | Status | Purpose |
 |---|---|---|
 | `docs/high-level-design.md` | Active — authoritative | Architecture, routes, data model, tech decisions |
-| `docs/riks-vs-wades-dashboard-spec.md` | Gitignored — historical only | Original requirements; do not edit or reference for new work |
+| `docs/original-dashboard-spec.md` | Gitignored — historical only | Original requirements; do not edit or reference for new work |

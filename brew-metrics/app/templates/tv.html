@@ -1,80 +1,128 @@
 {% extends "base.html" %}
 {% block title %}TV Dashboard - brew-metrics{% endblock %}
+{% block body_class %}page-tv{% endblock %}
 {% block nav %}{% endblock %}
 {% block me_banner %}{% endblock %}
 {% block content %}
 <div class="tv-layout" hx-get="/tv" hx-trigger="every 30s" hx-select=".tv-layout" hx-swap="outerHTML">
-    {% if teams|length >= 2 %}
-    <div class="tv-header">
-        <div class="tv-team team-1">
-            <h1>{{ teams[0] }}</h1>
-            <span class="tv-score">{{ scores.get(teams[0], 0) }}</span>
+    <div class="tv-statband">
+        <div class="tv-stat-total">
+            <span class="tv-total-count">{{ total_beers }}</span>
+            <span class="tv-total-label">Total Beers</span>
         </div>
-        <div class="tv-vs">VS</div>
-        <div class="tv-team team-2">
-            <h1>{{ teams[1] }}</h1>
-            <span class="tv-score">{{ scores.get(teams[1], 0) }}</span>
-        </div>
-    </div>
-    {% endif %}
-
-    <div class="tv-body">
-        <div class="tv-keg">
-            <h2>Beer Tracker</h2>
+        {% if teams|length >= 2 %}
+        <div class="tv-stat-teams">
             {% for team in teams %}
-            {% if team in keg_state %}
-            <div class="keg-bar-group">
-                <label>{{ team }}: {{ keg_state[team].logged_total }} / {{ keg_state[team].capacity }}</label>
-                <div class="progress-bar">
-                    <div class="progress-fill team-{{ loop.index }}"
-                         style="width: {{ (keg_state[team].logged_total / keg_state[team].capacity * 100)|round(1) }}%">
-                    </div>
+            <div class="tv-team-stat team-{{ loop.index }}-stat">
+                <div class="tv-team-name">{{ team }}</div>
+                <div class="tv-team-beers">{{ team_beer_totals.get(team, 0) }}</div>
+                <div class="tv-team-sub">
+                    {{ byob_totals.get(team, 0) }} BYOB
+                </div>
+                <div class="tv-points-track">
+                    {% set pts = scores.get(team, 0) %}
+                    {% set pct = [pts / 1000 * 100, 100]|min %}
+                    <div class="tv-points-fill team-{{ loop.index }}-fill" style="width: {{ pct }}%"></div>
+                    <div class="tv-points-text">{{ pts }} pts</div>
                 </div>
             </div>
-            {% endif %}
             {% endfor %}
         </div>
+        {% endif %}
+    </div>
 
-        <div class="tv-events">
-            <h2>Events</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Event</th><th>Status</th>
-                        {% for team in teams %}<th>{{ team }}</th>{% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for event in events %}
-                    <tr class="status-{{ event.status }}">
-                        <td>{{ event.name }}</td>
-                        <td>{{ event.status }}</td>
-                        {% for team in teams %}
-                        <td>{{ event.scores.get(team) if event.scores.get(team) is not none else '-' }}</td>
+    <div class="tv-columns">
+        <div class="tv-col">
+            <h2>Leaderboard</h2>
+            <div class="tv-col-body" data-tv-scroll>
+                <table class="leaderboard">
+                    <thead>
+                        <tr><th>#</th><th>Name</th><th>Team</th><th>Beers</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in leaderboard %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ entry.person.nickname or entry.person.full_name }}</td>
+                            <td>{{ entry.person.team_name }}</td>
+                            <td>{{ entry.count }}</td>
+                        </tr>
                         {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="tv-leaderboard">
-            <h2>Top Drinkers</h2>
-            <table>
-                <thead>
-                    <tr><th>#</th><th>Name</th><th>Beers</th></tr>
-                </thead>
-                <tbody>
-                    {% for entry in leaderboard[:5] %}
-                    <tr>
-                        <td>{{ loop.index }}</td>
-                        <td>{{ entry.person.nickname or entry.person.full_name }}</td>
-                        <td>{{ entry.count }}</td>
-                    </tr>
+        <div class="tv-col">
+            <h2>Events</h2>
+            <div class="tv-col-body" data-tv-scroll>
+                <div class="event-list">
+                    {% for event in events %}
+                    <div class="event-card status-{{ event.status }}">
+                        <div class="event-name">{{ event.name }}</div>
+                        <div class="event-status">{{ event.status }}</div>
+                        {% if event.scores and event.scores.values()|select('ne', none)|list %}
+                        <div class="event-scores">
+                            {% for team in teams %}
+                            <span class="team-{{ loop.index }}">{{ team[:1] }}: {{ event.scores.get(team, '-') }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    var SCROLL_DURATION = 25000;
+    var PAUSE_MS = 3000;
+
+    function easeInOut(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    function autoScroll(el) {
+        function run() {
+            var maxScroll = el.scrollHeight - el.clientHeight;
+            if (maxScroll <= 0) { setTimeout(run, PAUSE_MS); return; }
+            var startTime = null;
+            function step(ts) {
+                // Bail if this element was swapped out by an HTMX refresh.
+                if (!el.isConnected) return;
+                if (!startTime) startTime = ts;
+                var progress = Math.min((ts - startTime) / SCROLL_DURATION, 1);
+                el.scrollTop = maxScroll * easeInOut(progress);
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                } else {
+                    setTimeout(function () {
+                        el.scrollTop = 0;
+                        setTimeout(run, PAUSE_MS);
+                    }, PAUSE_MS);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+        setTimeout(run, PAUSE_MS);
+    }
+
+    function init() {
+        var cols = document.querySelectorAll('[data-tv-scroll]');
+        for (var i = 0; i < cols.length; i++) {
+            if (!cols[i].dataset.tvScrollInit) {
+                cols[i].dataset.tvScrollInit = '1';
+                autoScroll(cols[i]);
+            }
+        }
+    }
+
+    init();
+    // After each 30s HTMX swap the old columns are replaced; re-init the new ones.
+    document.body.addEventListener('htmx:afterSwap', init);
+})();
+</script>
 {% endblock %}
