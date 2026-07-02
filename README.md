@@ -2,7 +2,7 @@
 
 A lightweight web app for a weekend competition (~20 people). Tracks brew consumption per person and team, runs a live scoreboard across weekend events, and assigns participants to teams via a pre-weekend survey. Two teams compete: **Red** vs **Blue**.
 
-Built with FastAPI, HTMX, Jinja2, and PostgreSQL. Deployed on AWS App Runner with Terraform-managed infrastructure.
+Built with FastAPI, HTMX, Jinja2, and PostgreSQL. Deployed on AWS Elastic Container Service with an Postgresql RDS-backend, utilizing Terraform to manage infrastructure.
 
 ## Local Development
 
@@ -41,6 +41,6 @@ poetry run pytest
 ```
 brew-metrics/          Production app (FastAPI + HTMX + Postgres)
 brew-metrics-test/     Minimal hello-world app for AWS deployment validation
-terraform/             AWS infrastructure (VPC, ECR, RDS, App Runner, IAM, Secrets)
+terraform/             AWS infrastructure (VPC, ECR, RDS, ECS, IAM, Secrets)
 docs/                  Design documents
 ```

@@ -17,7 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database:** PostgreSQL 16 on RDS
 - **Container base:** `public.ecr.aws/docker/library/python:3.12-slim`
 - **Registry:** AWS ECR (private)
-- **Hosting:** AWS App Runner (stateless container; all state in RDS)
+- **Hosting:** AWS Elastic Container Service (stateless container; all state in RDS)
 - **Secrets:** AWS Secrets Manager — DB credentials and admin credentials are never in env vars or code
 - **IaC:** Terraform (`terraform/`)
 
@@ -59,7 +59,7 @@ brew-metrics/        Production application (active development)
   Dockerfile
   pyproject.toml
 
-terraform/           All AWS infrastructure (VPC, ECR, RDS, App Runner, IAM, Secrets)
+terraform/           All AWS infrastructure (VPC, ECR, RDS, ECS, IAM, Secrets)
 docs/                Design documents
 ```
 

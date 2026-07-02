@@ -35,7 +35,7 @@ variable "admin_password" {
 }
 
 variable "app_image_tag" {
-  description = "ECR image tag to deploy on the App Runner service"
+  description = "ECR image tag to deploy on ECS"
   type        = string
   default     = "latest"
 }

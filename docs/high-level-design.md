@@ -90,7 +90,7 @@ Phone browser / TV browser
         │
         │ HTTPS
         ▼
-  App Runner (FastAPI container)
+  ECS (FastAPI container)
         │
         ├── /survey             → pre-event skill/arrival survey (public)
         ├── /                   → participant brews input page
@@ -277,7 +277,7 @@ The repo uses two application subdirectories to keep validation work separate fr
 
 ```
 brew-metrics-test/   Minimal hello-world FastAPI app. Used only to validate the Docker
-                     build pipeline and AWS deployment (ECR push, App Runner, VPC/RDS).
+                     build pipeline and AWS deployment (ECR push, ECS, VPC/RDS).
                      Has its own pyproject.toml, Dockerfile, and tests. Not deployed to
                      production. Decommissioned once end-to-end AWS deployment is confirmed.
 
@@ -285,7 +285,7 @@ brew-metrics/        Production application. All feature development happens her
                      Has its own pyproject.toml, Dockerfile, and tests.
 
 terraform/           Single Terraform root managing all AWS infrastructure for both
-                     apps (VPC, ECR repos, RDS, App Runner services, IAM, Secrets Manager).
+                     apps (VPC, ECR repos, RDS, ECS, IAM, Secrets Manager).
 
 docs/                Design documents. high-level-design.md is the authoritative source.
 ```
