@@ -18,6 +18,8 @@ id_rsa*
 # Local note files
 *dev-flow-reference.md
 *to-do.md
+docs/SURVEY_REWORK.md
+docs/EVENTS_REWORK.md
 
 # Historical reference only — do not edit, superseded by high-level-design.md
 *original-dashboard-spec.md
